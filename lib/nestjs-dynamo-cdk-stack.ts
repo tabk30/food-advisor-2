@@ -1,5 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+// import { Cognito } from './congnito-construct';
+import { ApiConstruct } from './api-construct';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class NestjsDynamoCdkStack extends cdk.Stack {
@@ -12,5 +14,15 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
     // const queue = new sqs.Queue(this, 'NestjsDynamoCdkQueue', {
     //   visibilityTimeout: cdk.Duration.seconds(300)
     // });
+
+    // const cognitoResource = new Cognito(this, 'cognito', {
+    //   hostedAuthDomainPrefix: "test"
+    // });
+    new ApiConstruct(
+      this, 'Api', 
+      // {
+      //   userPool: cognitoResource.userPoll
+      // }
+    )
   }
 }
