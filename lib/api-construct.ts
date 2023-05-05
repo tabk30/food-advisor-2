@@ -1,3 +1,4 @@
+import { CfnOutput, Duration } from "aws-cdk-lib";
 import { AuthorizationType, CfnAuthorizer, CfnMethod, LambdaIntegration, RestApi } from "aws-cdk-lib/aws-apigateway";
 import { IUserPool } from "aws-cdk-lib/aws-cognito";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
@@ -10,60 +11,27 @@ export interface ApiConstructProps {
 }
 
 export class ApiConstruct extends Construct {
+    private readonly appName: string;
+    private _lambdaHandler: Function;
+    public get lambda():Function {
+        return this._lambdaHandler
+    }
+
+    private _api: RestApi;
+    public get api(): RestApi {
+        return this._api
+    }
+    
     constructor(
-        scope: Construct, 
-        id: string, 
+        private readonly scope: Construct, 
+        private readonly id: string, 
         // { userPool }: ApiConstructProps
         ) {
         super(scope, id);
+        this.appName = scope.node.tryGetContext('appName') || "Food-Advisor";
 
-        // add dynamo db table to store our todo
-        const table = new Table(this, 'Table', {
-            partitionKey: { name: 'PK', type: AttributeType.STRING },
-            sortKey: { name: 'SK', type: AttributeType.STRING },
-            billingMode: BillingMode.PAY_PER_REQUEST,
-        });
-
-        // pack all external deps in layer
-        const lambdaLayer = new LayerVersion(this, 'HandlerLayer', {
-            code: Code.fromAsset(resolve(__dirname, '../api/node_modules')),
-            compatibleRuntimes: [Runtime.NODEJS_16_X, Runtime.NODEJS_18_X],
-            description: 'Api Handler Dependencies',
-        });
-
-        // add handler to respond to all our api requests
-        const handler = new Function(this, 'Handler', {
-            code: Code.fromAsset(resolve(__dirname, '../api/dist'), {
-                exclude: ['node_modules'],
-            }),
-            handler: 'main.api',
-            runtime: Runtime.NODEJS_16_X,
-            layers: [lambdaLayer],
-            environment: {
-                NODE_PATH: '$NODE_PATH:/opt',
-                tableName: table.tableName,
-            },
-        });
-        table.grantReadWriteData(handler);
-
-        // add api resource to handle all http traffic and pass it to our handler
-        const api = new RestApi(this, 'Api', {
-            deploy: true,
-            defaultMethodOptions: {
-                apiKeyRequired: true,
-            },
-            deployOptions: {
-                stageName: 'v1',
-            },
-        });
-
-        // add proxy resource to handle all api requests
-        const apiResource = api.root.addProxy({
-            defaultIntegration: new LambdaIntegration(handler),
-            // defaultMethodOptions: {
-            //     authorizationType: AuthorizationType.COGNITO,
-            // },
-        });
+        this.createLambdaHandler();
+        this.createApiGateWay();
 
         // add api key to enable monitoring
         // const apiKey = api.addApiKey('ApiKey');
@@ -87,5 +55,67 @@ export class ApiConstruct extends Construct {
         // });
         // anyMethod.node.addDependency(authorizer);
         // anyMethod.addOverride('Properties.AuthorizerId', authorizer.ref);
+    }
+
+    private createLambdaHandler() {
+        // add dynamo db table to store our todo
+        const table = new Table(this, 'Table', {
+            partitionKey: { name: 'PK', type: AttributeType.STRING },
+            sortKey: { name: 'SK', type: AttributeType.STRING },
+            billingMode: BillingMode.PAY_PER_REQUEST,
+        });
+
+        // pack all external deps in layer
+        const lambdaLayer = new LayerVersion(this, `${this.appName}-HandlerLayer`, {
+            code: Code.fromAsset(resolve(__dirname, '../api/node_modules')),
+            compatibleRuntimes: [Runtime.NODEJS_16_X, Runtime.NODEJS_18_X],
+            description: 'Api Handler Dependencies',
+        });
+
+        // add handler to respond to all our api requests
+        this._lambdaHandler = new Function(this, `${this.appName}-Handler`, {
+            code: Code.fromAsset(resolve(__dirname, '../api/dist'), {
+                exclude: ['node_modules'],
+            }),
+            handler: 'main.api',
+            memorySize: 1024,
+            timeout: Duration.seconds(5),
+            runtime: Runtime.NODEJS_16_X,
+            layers: [lambdaLayer],
+            environment: {
+                NODE_PATH: '$NODE_PATH:/opt',
+                tableName: table.tableName,
+            },
+        });
+        table.grantReadWriteData(this._lambdaHandler);
+    }
+
+    private createApiGateWay() {
+        // add api resource to handle all http traffic and pass it to our handler
+        this._api = new RestApi(this, `${this.appName}-api-gateway`, {
+            deploy: true,
+            defaultMethodOptions: {
+                apiKeyRequired: true,
+            },
+            // deployOptions: {
+            //     stageName: 'v1',
+            // },
+        });
+        new CfnOutput(this, 'apiUrl', {value: this._api.url});
+
+        // add proxy resource to handle all api requests
+        this._api.root.addProxy({
+            defaultIntegration: new LambdaIntegration(this._lambdaHandler),
+            // defaultMethodOptions: {
+            //     authorizationType: AuthorizationType.COGNITO,
+            // },
+        });
+
+        // const apiResource = this.api.root.addProxy({
+        //     defaultIntegration: new LambdaIntegration(this._lambdaHandler),
+        //     // defaultMethodOptions: {
+        //     //     authorizationType: AuthorizationType.COGNITO,
+        //     // },
+        // });
     }
 }

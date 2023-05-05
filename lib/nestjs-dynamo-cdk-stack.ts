@@ -19,7 +19,7 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
     //   hostedAuthDomainPrefix: "test"
     // });
     new ApiConstruct(
-      this, 'Api', 
+      this, 'LambdaHandler', 
       // {
       //   userPool: cognitoResource.userPoll
       // }
