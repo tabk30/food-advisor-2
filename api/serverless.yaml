@@ -1,0 +1,19 @@
+service: food-advisor
+
+plugins:
+ - serverless-plugin-typescript
+ - serverless-plugin-optimize
+ - serverless-offline
+
+provider:
+ name: aws
+ runtime: nodejs16.x
+
+functions:
+ main: # The name of the lambda function
+   # The module 'handler' is exported in the file 'src/lambda'
+   handler: ./src/lambda.handler
+   events:
+     - http:
+        method: any
+        path: /{any+}
