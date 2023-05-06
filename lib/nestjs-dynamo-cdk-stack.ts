@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 // import { Cognito } from './congnito-construct';
 import { ApiConstruct } from './api-construct';
+import { DynamoDBConstruct } from './dynamodb-construct';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class NestjsDynamoCdkStack extends cdk.Stack {
@@ -18,11 +19,13 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
     // const cognitoResource = new Cognito(this, 'cognito', {
     //   hostedAuthDomainPrefix: "test"
     // });
-    new ApiConstruct(
-      this, 'LambdaHandler', 
-      // {
-      //   userPool: cognitoResource.userPoll
-      // }
-    )
+    const table = new DynamoDBConstruct(this, 'DynamoDBConstruct');
+    const api = new ApiConstruct(
+      this, 'LambdaHandler',
+      {
+        table: table.restaurant
+      }
+    );
+    table.grantConnect(api.lambda);
   }
 }

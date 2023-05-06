@@ -7,7 +7,8 @@ import { Construct } from "constructs";
 import { resolve } from "path";
 
 export interface ApiConstructProps {
-    userPool: IUserPool
+    // userPool: IUserPool,
+    table: Table
 }
 
 export class ApiConstruct extends Construct {
@@ -25,12 +26,12 @@ export class ApiConstruct extends Construct {
     constructor(
         private readonly scope: Construct, 
         private readonly id: string, 
-        // { userPool }: ApiConstructProps
+        { table }: ApiConstructProps
         ) {
         super(scope, id);
         this.appName = scope.node.tryGetContext('appName') || "Food-Advisor";
 
-        this.createLambdaHandler();
+        this.createLambdaHandler(table);
         this.createApiGateWay();
 
         // add api key to enable monitoring
@@ -57,17 +58,10 @@ export class ApiConstruct extends Construct {
         // anyMethod.addOverride('Properties.AuthorizerId', authorizer.ref);
     }
 
-    private createLambdaHandler() {
-        // add dynamo db table to store our todo
-        const table = new Table(this, 'Table', {
-            partitionKey: { name: 'PK', type: AttributeType.STRING },
-            sortKey: { name: 'SK', type: AttributeType.STRING },
-            billingMode: BillingMode.PAY_PER_REQUEST,
-        });
-
+    private createLambdaHandler(table: Table) {
         // pack all external deps in layer
-        const lambdaLayer = new LayerVersion(this, `${this.appName}-HandlerLayer`, {
-            code: Code.fromAsset(resolve(__dirname, '../api/node_modules')),
+        const lambdaLayer1 = new LayerVersion(this, `${this.appName}-HandlerLayer`, {
+            code: Code.fromAsset(resolve(__dirname, '../lambda-layer-1/nodejs/node_modules')),
             compatibleRuntimes: [Runtime.NODEJS_16_X, Runtime.NODEJS_18_X],
             description: 'Api Handler Dependencies',
         });
@@ -81,13 +75,12 @@ export class ApiConstruct extends Construct {
             memorySize: 1024,
             timeout: Duration.seconds(5),
             runtime: Runtime.NODEJS_16_X,
-            layers: [lambdaLayer],
+            layers: [lambdaLayer1],
             environment: {
                 NODE_PATH: '$NODE_PATH:/opt',
                 tableName: table.tableName,
             },
         });
-        table.grantReadWriteData(this._lambdaHandler);
     }
 
     private createApiGateWay() {
