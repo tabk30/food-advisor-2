@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Put, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { RestaurantService } from './restaurant.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
@@ -18,10 +18,14 @@ export class RestaurantController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string) {
     const parts: string[] = id.split(',');
-    if (parts.length < 2) throw Error("restaurantt id invalid!");
-    return this.restaurantService.findOne(parts[0], parts[1]);
+    if (parts.length < 2) throw new HttpException({
+      status: HttpStatus.BAD_REQUEST,
+      error: 'restaurant id invalid!',
+    }, HttpStatus.BAD_REQUEST);
+
+    return await this.restaurantService.findOne(parts[0], parts[1]);
   }
 
   @Put(':id')
@@ -30,13 +34,21 @@ export class RestaurantController {
     @Body() updateRestaurantDto: UpdateRestaurantDto
   ) {
     const parts: string[] = id.split(',');
-    if (parts.length < 2) throw Error("restaurantt id invalid!");
+    if (parts.length < 2) throw new HttpException({
+      status: HttpStatus.BAD_REQUEST,
+      error: 'restaurant id invalid!',
+    }, HttpStatus.BAD_REQUEST);
 
     return this.restaurantService.update(parts[0], parts[1], updateRestaurantDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.restaurantService.remove(+id);
+    const parts: string[] = id.split(',');
+    if (parts.length < 2) throw new HttpException({
+      status: HttpStatus.BAD_REQUEST,
+      error: 'restaurant id invalid!',
+    }, HttpStatus.BAD_REQUEST);
+    return this.restaurantService.remove(parts[0], parts[1]);
   }
 }

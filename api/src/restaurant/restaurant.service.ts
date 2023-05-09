@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { DynamodbService } from './../services/dynamodb/dynamodb.service';
 import { Restaurant } from './entities/restaurant.entity';
 import { v4 } from 'uuid';
 import * as moment from 'moment';
-import { DynamoDBClient, GetItemCommand, GetItemCommandInput, PutItemCommand, UpdateItemCommand, UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
+import { DeleteItemCommand, DeleteItemCommandInput, DynamoDBClient, GetItemCommand, GetItemCommandInput, PutItemCommand, UpdateItemCommand, UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { promises } from 'dns';
 
 @Injectable()
@@ -49,8 +49,12 @@ export class RestaurantService {
       
     };
 
+    
     let res = await this._ddbCLient.send(new GetItemCommand(input))
-    if (!res.Item) throw Error(`Restaurant ${hash} not found!`);
+    if (!res.Item) throw new HttpException({
+      status: HttpStatus.NOT_FOUND,
+      error: `Restaurant ${hash} not found!`
+    }, HttpStatus.NOT_FOUND);
     return {
       restaurant_id: res.Item["restaurant_id"].S,
       name: res.Item["restaurant_name"].S,
@@ -81,7 +85,18 @@ export class RestaurantService {
     };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} restaurant`;
+  async remove(hash: string, range: string) {
+    const input: DeleteItemCommandInput = {
+      TableName: this._tableName,
+      Key: {
+        restaurant_id: {S: hash},
+        created_at_ts: {N: range}
+      }
+    };
+    const res = await this._ddbCLient.send(new DeleteItemCommand(input));
+
+    return {
+      restaurant_id: hash,
+    };
   }
 }
