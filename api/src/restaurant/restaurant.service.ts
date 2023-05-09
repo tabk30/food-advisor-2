@@ -5,7 +5,7 @@ import { DynamodbService } from './../services/dynamodb/dynamodb.service';
 import { Restaurant } from './entities/restaurant.entity';
 import { v4 } from 'uuid';
 import * as moment from 'moment';
-import { DeleteItemCommand, DeleteItemCommandInput, DynamoDBClient, GetItemCommand, GetItemCommandInput, PutItemCommand, UpdateItemCommand, UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
+import { DeleteItemCommand, DeleteItemCommandInput, DynamoDBClient, GetItemCommand, GetItemCommandInput, PutItemCommand, ScanCommand, ScanCommandInput, UpdateItemCommand, UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { promises } from 'dns';
 
 @Injectable()
@@ -35,8 +35,19 @@ export class RestaurantService {
   }
 
   async findAll(): Promise<Restaurant[]> {
-
-    return []
+    const params: ScanCommandInput = {
+      TableName: this._tableName,
+    }
+    const res = await this._ddbCLient.send(new ScanCommand(params));
+    
+    let list = res.Items.map((item) => {
+      return {
+        restaurant_id: item["restaurant_id"].S,
+        name: item["restaurant_name"].S,
+        created_at_ts: parseInt(item["created_at_ts"].N)
+      }
+    })
+    return list
   }
 
   async findOne(hash: string, range: string): Promise<Restaurant> {
@@ -46,7 +57,6 @@ export class RestaurantService {
         restaurant_id: { S: hash },
         created_at_ts: { N: range }
       },
-      
     };
 
     
