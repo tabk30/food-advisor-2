@@ -78,7 +78,7 @@ export class ApiConstruct extends Construct {
             layers: [lambdaLayer1],
             environment: {
                 NODE_PATH: '$NODE_PATH:/opt',
-                tableName: table.tableName,
+                RETAURANT_TABLE_NAME: table.tableName
             },
         });
     }
@@ -88,7 +88,7 @@ export class ApiConstruct extends Construct {
         this._api = new RestApi(this, `${this.appName}-api-gateway`, {
             deploy: true,
             defaultMethodOptions: {
-                apiKeyRequired: true,
+                // apiKeyRequired: true,
             },
             // deployOptions: {
             //     stageName: 'v1',

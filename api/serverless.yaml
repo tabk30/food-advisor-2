@@ -3,11 +3,45 @@ service: food-advisor
 plugins:
  - serverless-plugin-typescript
  - serverless-plugin-optimize
+ - serverless-dynamodb-local
  - serverless-offline
 
 provider:
  name: aws
  runtime: nodejs16.x
+ environment:
+  dynamodb_end_point: 'http://localhost:8000'
+
+custom:
+  dynamodb:
+    stages:
+    # set for create tables on dev enviroment
+      - dev
+    start:
+      inMemory: true
+      port: 8000
+      migrate: true # create tables on start
+      onStart: true
+
+resources: # CloudFormation template syntax
+  Resources:
+    restaurantsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: restaurants
+        AttributeDefinitions:
+          - AttributeName: restaurant_id
+            AttributeType: S
+          - AttributeName: created_at_ts
+            AttributeType: N
+        KeySchema:
+          - AttributeName: restaurant_id
+            KeyType: HASH
+          - AttributeName: created_at_ts
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
 
 functions:
  main: # The name of the lambda function

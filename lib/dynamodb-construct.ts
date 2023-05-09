@@ -23,11 +23,11 @@ export class DynamoDBConstruct extends Construct {
     }
 
     private createTable() {
-        this._restaurantTable = new Table(this, `${this.appName}_Table`, {
+        this._restaurantTable = new Table(this, `restaurants`, {
             billingMode: BillingMode.PAY_PER_REQUEST,
             removalPolicy: RemovalPolicy.DESTROY,
-            partitionKey: { name: 'id', type: AttributeType.STRING },
-            sortKey: { name: 'createdAt', type: AttributeType.NUMBER },
+            partitionKey: { name: 'restaurant_id', type: AttributeType.STRING },
+            sortKey: { name: 'created_at_ts', type: AttributeType.NUMBER },
         });
     }
     public grantConnect(lambdaConnect: Function) {
