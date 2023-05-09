@@ -5,7 +5,8 @@ import { DynamodbService } from './../services/dynamodb/dynamodb.service';
 import { Restaurant } from './entities/restaurant.entity';
 import { v4 } from 'uuid';
 import * as moment from 'moment';
-import { DynamoDBClient, GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, GetItemCommand, GetItemCommandInput, PutItemCommand, UpdateItemCommand, UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
+import { promises } from 'dns';
 
 @Injectable()
 export class RestaurantService {
@@ -25,7 +26,7 @@ export class RestaurantService {
       TableName: this._tableName,
       Item: {
         restaurant_id: { S: tmpData.restaurant_id },
-        name: { S: tmpData.name },
+        restaurant_name: { S: tmpData.name },
         created_at_ts: { N: `${tmpData.created_at_ts}` }
       },
     };
@@ -39,29 +40,45 @@ export class RestaurantService {
   }
 
   async findOne(hash: string, range: string): Promise<Restaurant> {
-    const input = {
+    const input:GetItemCommandInput = {
       TableName: this._tableName,
       Key: {
         restaurant_id: { S: hash },
         created_at_ts: { N: range }
-      }
+      },
+      
     };
 
-    try {
-      let res = await this._ddbCLient.send(new GetItemCommand(input))
-      if (!res.Item) throw Error(`Restaurant ${hash} not found!`);
-      return {
-        restaurant_id: res.Item["restaurant_id"].S,
-        name: res.Item["name"].S,
-        created_at_ts: parseInt(res.Item["created_at_ts"].N)
-      };
-    } catch (error) {
-      throw error
-    }
+    let res = await this._ddbCLient.send(new GetItemCommand(input))
+    if (!res.Item) throw Error(`Restaurant ${hash} not found!`);
+    return {
+      restaurant_id: res.Item["restaurant_id"].S,
+      name: res.Item["restaurant_name"].S,
+      created_at_ts: parseInt(res.Item["created_at_ts"].N)
+    };
   }
 
-  update(id: number, updateRestaurantDto: UpdateRestaurantDto) {
-    return `This action updates a #${id} restaurant`;
+  async update(hash: string, range: string, updateRestaurantDto: UpdateRestaurantDto): Promise<Restaurant> {
+    const input: UpdateItemCommandInput = {
+      TableName: this._tableName,
+      Key: {
+        restaurant_id: { S: hash },
+        created_at_ts: { N: range }
+      },
+      UpdateExpression: "set restaurant_name = :t",
+      ExpressionAttributeValues: {
+        ":t": { S: updateRestaurantDto.name }
+      },
+      ReturnValues: "ALL_NEW"
+    };
+    
+    const res = await this._ddbCLient.send(new UpdateItemCommand(input));
+    
+    return {
+      restaurant_id: res.Attributes["restaurant_id"].S,
+      name: res.Attributes["restaurant_name"].S,
+      created_at_ts: parseInt(res.Attributes["created_at_ts"].N)
+    };
   }
 
   remove(id: number) {
