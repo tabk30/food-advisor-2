@@ -71,7 +71,7 @@ export class ApiConstruct extends Construct {
             code: Code.fromAsset(resolve(__dirname, '../api/dist'), {
                 exclude: ['node_modules'],
             }),
-            handler: 'lambda.handler',
+            handler: 'restaurant/lambda.handler',
             memorySize: 1024,
             timeout: Duration.seconds(5),
             runtime: Runtime.NODEJS_16_X,
