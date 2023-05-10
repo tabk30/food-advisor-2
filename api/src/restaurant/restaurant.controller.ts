@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Put, BadRequestExcep
 import { RestaurantService } from './restaurant.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
+import { CreateRestaurantCommand } from './commands/definitions/create-restaurant';
 
 @Controller('restaurant')
 export class RestaurantController {
@@ -9,23 +10,24 @@ export class RestaurantController {
 
   @Post()
   create(@Body() createRestaurantDto: CreateRestaurantDto) {
-    return this.restaurantService.create(createRestaurantDto);
+
+    return this.restaurantService.create(new CreateRestaurantCommand(createRestaurantDto.name));
   }
 
   @Get()
   findAll() {
-    return this.restaurantService.findAll();
+    // return this.restaurantService.findAll();
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    const parts: string[] = id.split(',');
-    if (parts.length < 2) throw new HttpException({
-      status: HttpStatus.BAD_REQUEST,
-      error: 'restaurant id invalid!',
-    }, HttpStatus.BAD_REQUEST);
+    // const parts: string[] = id.split(',');
+    // if (parts.length < 2) throw new HttpException({
+    //   status: HttpStatus.BAD_REQUEST,
+    //   error: 'restaurant id invalid!',
+    // }, HttpStatus.BAD_REQUEST);
 
-    return await this.restaurantService.findOne(parts[0], parts[1]);
+    // return await this.restaurantService.findOne(parts[0], parts[1]);
   }
 
   @Put(':id')
@@ -33,22 +35,22 @@ export class RestaurantController {
     @Param('id') id: string, 
     @Body() updateRestaurantDto: UpdateRestaurantDto
   ) {
-    const parts: string[] = id.split(',');
-    if (parts.length < 2) throw new HttpException({
-      status: HttpStatus.BAD_REQUEST,
-      error: 'restaurant id invalid!',
-    }, HttpStatus.BAD_REQUEST);
+    // const parts: string[] = id.split(',');
+    // if (parts.length < 2) throw new HttpException({
+    //   status: HttpStatus.BAD_REQUEST,
+    //   error: 'restaurant id invalid!',
+    // }, HttpStatus.BAD_REQUEST);
 
-    return this.restaurantService.update(parts[0], parts[1], updateRestaurantDto);
+    // return this.restaurantService.update(parts[0], parts[1], updateRestaurantDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    const parts: string[] = id.split(',');
-    if (parts.length < 2) throw new HttpException({
-      status: HttpStatus.BAD_REQUEST,
-      error: 'restaurant id invalid!',
-    }, HttpStatus.BAD_REQUEST);
-    return this.restaurantService.remove(parts[0], parts[1]);
+    // const parts: string[] = id.split(',');
+    // if (parts.length < 2) throw new HttpException({
+    //   status: HttpStatus.BAD_REQUEST,
+    //   error: 'restaurant id invalid!',
+    // }, HttpStatus.BAD_REQUEST);
+    // return this.restaurantService.remove(parts[0], parts[1]);
   }
 }

@@ -5,12 +5,14 @@ import { RestaurantModule } from './restaurant/restaurant.module';
 import { DynamodbService } from './services/dynamodb/dynamodb.service';
 import { ConfigModule } from '@nestjs/config';
 import { DynamodbModule } from './services/dynamodb/dynamodb.module';
+import { EventModule } from './services/event/event.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
     RestaurantModule,
-    DynamodbModule
+    DynamodbModule,
+    EventModule
   ],
   controllers: [AppController],
   providers: [

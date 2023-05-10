@@ -1,15 +1,35 @@
-import { attribute, hashKey, rangeKey, table } from '@aws/dynamodb-data-mapper-annotations';
-import * as moment from 'moment';
-import { v4 } from 'uuid';
+import { AggregateRoot } from './../../core/aggregate-root';
+import { RestaurantCreated } from './events/RestaurantCreate';
+import { RestaurantUpdated } from './events/RestaurantUpdate';
 
-@table('restaurant')
-export class Restaurant {
-    @hashKey({ defaultProvider: () => v4() })
-    restaurant_id: string;
+export class Restaurant extends AggregateRoot {
+    public restaurant_id: string;
+    public name: string
+    public tableName: string = process.env.RETAURANT_TABLE_NAME ? process.env.RETAURANT_TABLE_NAME : 'restaurants';
 
-    @rangeKey({ defaultProvider: () => moment().valueOf() })
-    created_at_ts: number
+    constructor();
 
-    @attribute()
-    name: string
+    constructor(guid: string, name: string);
+
+    constructor(guid?: string, name?: string) {
+        super(guid);
+
+        if (guid && name) {
+            this.applyChange(new RestaurantCreated(guid, name));
+        }
+    }
+
+    updateInfo(name: string) {
+        this.applyChange(new RestaurantUpdated(this.guid, name));
+    }
+
+    applyRestaurantCreated(event: RestaurantCreated) {
+        console.log("applyRestaurantCreated", event)
+        this.guid = event.guid;
+        this.name = event.name;
+    }
+
+    applyJobUpdated(event: RestaurantUpdated) {
+        this.name = event.name;
+    }
 }
