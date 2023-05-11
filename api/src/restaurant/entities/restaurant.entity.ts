@@ -1,6 +1,6 @@
 import { AggregateRoot } from './../../core/aggregate-root';
-import { RestaurantCreated } from './events/RestaurantCreate';
-import { RestaurantUpdated } from './events/RestaurantUpdate';
+import { RestaurantCreatedEvent } from '../events/RestaurantCreate';
+import { RestaurantUpdatedEvent } from '../events/RestaurantUpdate';
 
 export class Restaurant extends AggregateRoot {
     public restaurant_id: string;
@@ -15,21 +15,20 @@ export class Restaurant extends AggregateRoot {
         super(guid);
 
         if (guid && name) {
-            this.applyChange(new RestaurantCreated(guid, name));
+            this.applyChange(new RestaurantCreatedEvent(guid, name));
         }
     }
 
     updateInfo(name: string) {
-        this.applyChange(new RestaurantUpdated(this.guid, name));
+        this.applyChange(new RestaurantUpdatedEvent(this.guid, name));
     }
 
-    applyRestaurantCreated(event: RestaurantCreated) {
-        console.log("applyRestaurantCreated", event)
+    applyRestaurantCreatedEvent(event: RestaurantCreatedEvent) {
         this.guid = event.guid;
         this.name = event.name;
     }
 
-    applyJobUpdated(event: RestaurantUpdated) {
+    applyRestaurantUpdatedEvent(event: RestaurantUpdatedEvent) {
         this.name = event.name;
     }
 }

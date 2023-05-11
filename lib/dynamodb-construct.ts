@@ -26,8 +26,8 @@ export class DynamoDBConstruct extends Construct {
         this._restaurantTable = new Table(this, `restaurants`, {
             billingMode: BillingMode.PAY_PER_REQUEST,
             removalPolicy: RemovalPolicy.DESTROY,
-            partitionKey: { name: 'restaurant_id', type: AttributeType.STRING },
-            sortKey: { name: 'created_at_ts', type: AttributeType.NUMBER },
+            partitionKey: { name: 'guid', type: AttributeType.STRING },
+            sortKey: { name: 'version', type: AttributeType.NUMBER },
         });
     }
     public grantConnect(lambdaConnect: Function) {
