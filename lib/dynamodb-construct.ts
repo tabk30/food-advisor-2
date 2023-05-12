@@ -9,28 +9,38 @@ export interface DynamoDBInterface {
 
 export class DynamoDBConstruct extends Construct {
     private readonly appName: string;
-    private _restaurantTable: Table;
-    public get restaurant(): Table {
-        return this._restaurantTable;
+    private _queryAccountTable: Table;
+    public get queryAccountTable(): Table {
+        return this._queryAccountTable;
+    }
+    private _commandAccountTable: Table;
+    public get commandAccountTable(): Table {
+        return this._commandAccountTable;
     }
     constructor(
         private readonly scope: Construct,
         private readonly id: string
     ) {
         super(scope, id);
-        this.appName = scope.node.tryGetContext('appName') || "Food-Advisor";
+        this.appName = scope.node.tryGetContext('appName') || "Bank-CQRS";
         this.createTable();
     }
 
     private createTable() {
-        this._restaurantTable = new Table(this, `restaurants`, {
+        this._commandAccountTable = new Table(this, `commandAccount`, {
             billingMode: BillingMode.PAY_PER_REQUEST,
             removalPolicy: RemovalPolicy.DESTROY,
-            partitionKey: { name: 'guid', type: AttributeType.STRING },
+            partitionKey: { name: 'id', type: AttributeType.STRING },
             sortKey: { name: 'version', type: AttributeType.NUMBER },
+        });
+        this._queryAccountTable = new Table(this, 'queryAccount', {
+            billingMode: BillingMode.PAY_PER_REQUEST,
+            removalPolicy: RemovalPolicy.DESTROY,
+            partitionKey: { name: 'id', type: AttributeType.STRING }
         });
     }
     public grantConnect(lambdaConnect: Function) {
-        this._restaurantTable.grantReadWriteData(lambdaConnect);
+        this._commandAccountTable.grantReadWriteData(lambdaConnect);
+        this._queryAccountTable.grantReadData(lambdaConnect);
     }
 }

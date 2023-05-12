@@ -23,7 +23,8 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
     const api = new ApiConstruct(
       this, 'LambdaHandler',
       {
-        table: table.restaurant
+        commandAccountTable: table.commandAccountTable,
+        queryAccountTable: table.queryAccountTable
       }
     );
     table.grantConnect(api.lambda);

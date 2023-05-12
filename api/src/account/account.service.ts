@@ -73,9 +73,8 @@ export class AccountService {
     const snapshotIndex = events.findIndex(event => event.type == EventType.SNAPSHOT);
     const snapshot = events[snapshotIndex];
     const eventsSinceSnapshot = _.reverse(_.range(0, snapshotIndex).map(idx => events[idx]))
-    console.log("getAccount eventsSinceSnapshot", eventsSinceSnapshot.length);
+    
     const currentState = _.reduce(eventsSinceSnapshot, (state, event) => {
-      console.log("getAccount", event, state);
       if (event.type === EventType.WITHDRAW) {
         state.balance -= event.amount
         return state
@@ -93,36 +92,36 @@ export class AccountService {
     };
   }
 
-  public async addEvent (
-    id: string, 
-    event: {type: string, amount: number, balance: number},
+  public async addEvent(
+    id: string,
+    event: { type: string, amount: number, balance: number },
     snapshot: any,
     eventsSinceSnapshot: any[]
   ) {
-    const lastVersion = _.maxBy([ snapshot, ...eventsSinceSnapshot], 'version').version
+    const lastVersion = _.maxBy([snapshot, ...eventsSinceSnapshot], 'version').version
     let items: any[] = [
       {
         PutRequest: {
-          Item: {
-            id: { S: id },
-            version: { N:  lastVersion + 1},
-            type: { S: event.type },
-            amount: {N: event.amount},
-            timestamp: { N: `${moment().valueOf()}` }
-          },
+          Item: marshall({
+            id: id,
+            version: lastVersion + 1,
+            type: event.type,
+            amount: event.amount,
+            timestamp: `${moment().valueOf()}`
+          }),
         }
       }
     ]
-    if(eventsSinceSnapshot.length >= 3) {
+    if (eventsSinceSnapshot.length >= 3) {
       items.push({
         PutRequest: {
-          Item: {
-            id: { S: id },
-            version: { N:  lastVersion + 2},
-            type: { S: EventType.SNAPSHOT },
-            payload: {M: marshall({id: id, balance: event.balance, name: snapshot.payload.name})},
-            timestamp: { N: `${moment().valueOf()}` }
-          },
+          Item: marshall({
+            id: id,
+            version: lastVersion + 2,
+            type: EventType.SNAPSHOT,
+            payload: { id: id, balance: event.balance, name: snapshot.payload.name },
+            timestamp: `${moment().valueOf()}`
+          })
         }
       });
     }

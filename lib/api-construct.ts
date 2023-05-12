@@ -8,7 +8,8 @@ import { resolve } from "path";
 
 export interface ApiConstructProps {
     // userPool: IUserPool,
-    table: Table
+    commandAccountTable: Table,
+    queryAccountTable: Table
 }
 
 export class ApiConstruct extends Construct {
@@ -26,12 +27,12 @@ export class ApiConstruct extends Construct {
     constructor(
         private readonly scope: Construct, 
         private readonly id: string, 
-        { table }: ApiConstructProps
+        { commandAccountTable, queryAccountTable }: ApiConstructProps
         ) {
         super(scope, id);
-        this.appName = scope.node.tryGetContext('appName') || "Food-Advisor";
+        this.appName = scope.node.tryGetContext('appName') || "Bank-CQRS";
 
-        this.createLambdaHandler(table);
+        this.createLambdaHandler(commandAccountTable, queryAccountTable);
         this.createApiGateWay();
 
         // add api key to enable monitoring
@@ -58,7 +59,7 @@ export class ApiConstruct extends Construct {
         // anyMethod.addOverride('Properties.AuthorizerId', authorizer.ref);
     }
 
-    private createLambdaHandler(table: Table) {
+    private createLambdaHandler(commandAccountTable: Table, queryAccountTable: Table) {
         // pack all external deps in layer
         const lambdaLayer1 = new LayerVersion(this, `${this.appName}-HandlerLayer`, {
             code: Code.fromAsset(resolve(__dirname, '../lambda-layer-1/nodejs/node_modules')),
@@ -78,7 +79,8 @@ export class ApiConstruct extends Construct {
             layers: [lambdaLayer1],
             environment: {
                 NODE_PATH: '$NODE_PATH:/opt',
-                RETAURANT_TABLE_NAME: table.tableName
+                COMMAND_ACCOUNT_TABLE: commandAccountTable.tableName,
+                QUERY_ACCOUNT_TABLE: queryAccountTable.tableName
             },
         });
     }
