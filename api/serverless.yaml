@@ -4,6 +4,7 @@ plugins:
  - serverless-plugin-typescript
  - serverless-plugin-optimize
  - serverless-dynamodb-local
+ - serverless-offline-dynamodb-streams
  - serverless-offline
 
 provider:
@@ -24,7 +25,8 @@ custom:
       port: 8000
       migrate: true # create tables on start
       onStart: true
-
+  serverless-offline-dynamodb-streams: 
+    endpoint: http://localhost:8000
 resources: # CloudFormation template syntax
   Resources:
     commandAccountTable:
@@ -44,6 +46,9 @@ resources: # CloudFormation template syntax
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
+        StreamSpecification:
+          StreamEnabled: true
+          StreamViewType: NEW_AND_OLD_IMAGES
     queryAccountTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -59,10 +64,23 @@ resources: # CloudFormation template syntax
           WriteCapacityUnits: 1
 
 functions:
- restaurant_module: # The name of the lambda function
+  account_api: # The name of the lambda function
    # The module 'handler' is exported in the file 'src/lambda'
    handler: ./src/lambda.handler
    events:
      - http:
         method: any
         path: /account/{any+}
+  account_stream:
+   handler: ./src/dynamo-event-hander.handler
+   events:
+      - stream:
+          type: dynamodb
+          tableName: command_account
+          batchSize: 100
+          maximumRetryAttempts: 10
+          startingPosition: LATEST
+          arn: 
+            Fn::GetAtt:
+              - command_account
+              - Arn

@@ -10,7 +10,7 @@ import { AccountModule } from './account/account.module';
   imports: [
     ConfigModule.forRoot(),
     DynamodbModule,
-    AccountModule
+    AccountModule,
   ],
   controllers: [AppController],
   providers: [
