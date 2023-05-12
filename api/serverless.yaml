@@ -11,6 +11,8 @@ provider:
  runtime: nodejs16.x
  environment:
   dynamodb_end_point: 'http://localhost:8000'
+  COMMAND_ACCOUNT_TABLE: 'command_account'
+  QUERY_ACCOUNT_TABLE: 'query_account'
 
 custom:
   dynamodb:
@@ -25,20 +27,33 @@ custom:
 
 resources: # CloudFormation template syntax
   Resources:
-    restaurantsTable:
+    commandAccountTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: restaurants
+        TableName: command_account
         AttributeDefinitions:
-          - AttributeName: guid
+          - AttributeName: id
             AttributeType: S
           - AttributeName: version
             AttributeType: N
         KeySchema:
-          - AttributeName: guid
+          - AttributeName: id
             KeyType: HASH
           - AttributeName: version
             KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    queryAccountTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: query_account
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
@@ -50,4 +65,4 @@ functions:
    events:
      - http:
         method: any
-        path: /restaurant/{any+}
+        path: /account/{any+}
