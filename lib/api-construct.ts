@@ -2,7 +2,8 @@ import { CfnOutput, Duration } from "aws-cdk-lib";
 import { AuthorizationType, CfnAuthorizer, CfnMethod, LambdaIntegration, RestApi } from "aws-cdk-lib/aws-apigateway";
 import { IUserPool } from "aws-cdk-lib/aws-cognito";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
-import { Code, LayerVersion, Runtime, Function } from "aws-cdk-lib/aws-lambda";
+import { Code, LayerVersion, Runtime, Function, StartingPosition } from "aws-cdk-lib/aws-lambda";
+import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { Construct } from "constructs";
 import { resolve } from "path";
 
@@ -15,7 +16,7 @@ export interface ApiConstructProps {
 export class ApiConstruct extends Construct {
     private readonly appName: string;
     private _lambdaHandler: Function;
-    public get lambda():Function {
+    public get lambda(): Function {
         return this._lambdaHandler
     }
 
@@ -23,12 +24,12 @@ export class ApiConstruct extends Construct {
     public get api(): RestApi {
         return this._api
     }
-    
+
     constructor(
-        private readonly scope: Construct, 
-        private readonly id: string, 
+        private readonly scope: Construct,
+        private readonly id: string,
         { commandAccountTable, queryAccountTable }: ApiConstructProps
-        ) {
+    ) {
         super(scope, id);
         this.appName = scope.node.tryGetContext('appName') || "Bank-CQRS";
 
@@ -83,6 +84,9 @@ export class ApiConstruct extends Construct {
                 QUERY_ACCOUNT_TABLE: queryAccountTable.tableName
             },
         });
+        this._lambdaHandler.addEventSource(new DynamoEventSource(commandAccountTable, {
+            startingPosition: StartingPosition.LATEST,
+        }));
     }
 
     private createApiGateWay() {
@@ -96,7 +100,7 @@ export class ApiConstruct extends Construct {
             //     stageName: 'v1',
             // },
         });
-        new CfnOutput(this, 'apiUrl', {value: this._api.url});
+        new CfnOutput(this, 'apiUrl', { value: this._api.url });
 
         // add proxy resource to handle all api requests
         this._api.root.addProxy({

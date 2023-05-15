@@ -1,6 +1,6 @@
 import { Account, EventType } from "./account.entity";
 import {v4} from "uuid";
-import * as moment from 'moment';
+import moment from 'moment';
 import { marshall } from "@aws-sdk/util-dynamodb";
 
 export class AggregateAccount {

@@ -1,8 +1,8 @@
 // lambda.ts
 import { Handler, Context } from 'aws-lambda';
-import { Server } from 'http';
-import { createServer, proxy } from 'aws-serverless-express';
-import { eventContext } from 'aws-serverless-express/middleware';
+// import { eventContext } from 'aws-serverless-express/middleware';
+
+import serverlessExpress from '@vendia/serverless-express';
 
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
@@ -14,23 +14,28 @@ const express = require('express');
 // due to a compressed response (e.g. gzip) which has not been handled correctly
 // by aws-serverless-express and/or API Gateway. Add the necessary MIME types to
 // binaryMimeTypes below
-const binaryMimeTypes: string[] = [];
 
-let cachedServer: Server;
+let cachedServer: Handler;
 
-async function bootstrapServer(): Promise<Server> {
+async function bootstrap() {
     if (!cachedServer) {
         const expressApp = express();
-        const nestApp = await NestFactory.create(AppModule, new ExpressAdapter(expressApp))
-        nestApp.use(eventContext());
+        const nestApp = await NestFactory.create(
+            AppModule,
+            new ExpressAdapter(expressApp),
+        );
         await nestApp.init();
-        cachedServer = createServer(expressApp, undefined, binaryMimeTypes);
+        cachedServer = serverlessExpress({
+            app: expressApp,
+            eventSourceRoutes: {
+                AWS_DYNAMODB: '/account/events/dynamodb'
+            }
+        });
     }
     return cachedServer;
 }
 
-export const handler: Handler = async (event: any, context: Context) => {
-    cachedServer = await bootstrapServer();
-    console.log("event", event);
-    return proxy(cachedServer, event, context, 'PROMISE').promise;
-}
+export const handler = async (event: any, context: Context, callback: any) => {
+  const server = await bootstrap();
+  return server(event, context, callback);
+};

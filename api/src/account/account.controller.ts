@@ -21,6 +21,11 @@ export class AccountController {
     // return this.accountService.findOne(id);
   }
 
+  @Post('/events/dynamodb')
+  async dynamoStreamEvent(@Body() event: any) {
+    console.log("dynamoStreamEvent event", event)
+  }
+
   @Patch(':id/withdraw')
   async withdraw(@Param('id') id: string, @Body() updateAccountDto: UpdateAccountDto) {
     const { currentState, snapshot, eventsSinceSnapshot } = await this.accountService.getAccount(id);

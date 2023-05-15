@@ -69,12 +69,12 @@ functions:
    handler: ./src/lambda.handler
    events:
      - http:
-        method: any
-        path: /account/{any+}
-  account_stream:
-   handler: ./src/dynamo-event-hander.handler
-   events:
-      - stream:
+          method: ANY
+          path: /
+     - http:
+          method: ANY
+          path: '{proxy+}'
+     - stream:
           type: dynamodb
           tableName: command_account
           batchSize: 100
@@ -84,3 +84,16 @@ functions:
             Fn::GetAtt:
               - command_account
               - Arn
+  # account_stream:
+  #  handler: ./src/dynamo-event-hander.handler
+  #  events:
+  #     - stream:
+  #         type: dynamodb
+  #         tableName: command_account
+  #         batchSize: 100
+  #         maximumRetryAttempts: 10
+  #         startingPosition: LATEST
+  #         arn: 
+  #           Fn::GetAtt:
+  #             - command_account
+  #             - Arn

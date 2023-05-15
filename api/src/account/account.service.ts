@@ -3,7 +3,7 @@ import { UpdateAccountDto } from './dto/update-account.dto';
 import { DynamodbService } from '../services/dynamodb/dynamodb.service';
 import { BatchWriteItemCommand, BatchWriteItemCommandInput, QueryCommand, QueryCommandInput } from '@aws-sdk/client-dynamodb';
 import { Account, EventType } from './entities/account.entity';
-import * as moment from 'moment';
+import moment from 'moment';
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import * as _ from "lodash";
 import { AggregateAccount } from './entities/aggregate-account.entity';

@@ -1,5 +1,5 @@
 import { RemovalPolicy } from "aws-cdk-lib";
-import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
+import { AttributeType, BillingMode, StreamViewType, Table } from "aws-cdk-lib/aws-dynamodb";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 
@@ -32,6 +32,7 @@ export class DynamoDBConstruct extends Construct {
             removalPolicy: RemovalPolicy.DESTROY,
             partitionKey: { name: 'id', type: AttributeType.STRING },
             sortKey: { name: 'version', type: AttributeType.NUMBER },
+            stream: StreamViewType.NEW_AND_OLD_IMAGES,
         });
         this._queryAccountTable = new Table(this, 'queryAccount', {
             billingMode: BillingMode.PAY_PER_REQUEST,
