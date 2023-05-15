@@ -1,6 +1,5 @@
 // lambda.ts
 import { Handler, Context } from 'aws-lambda';
-// import { eventContext } from 'aws-serverless-express/middleware';
 
 import serverlessExpress from '@vendia/serverless-express';
 

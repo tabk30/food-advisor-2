@@ -68,6 +68,7 @@ export class AccountService {
       ScanIndexForward: false
     }
     const res = await this.db.db.send(new QueryCommand(query));
+    if(res.Count == 0) throw new HttpException({status: HttpStatus.NOT_FOUND, error: "Account not found"}, HttpStatus.NOT_FOUND);
     const events = res.Items.map(item => unmarshall(item));
     
     const snapshotIndex = events.findIndex(event => event.type == EventType.SNAPSHOT);

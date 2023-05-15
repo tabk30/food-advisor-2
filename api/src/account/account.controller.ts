@@ -49,7 +49,6 @@ export class AccountController {
   @Patch(':id/withdraw')
   async withdraw(@Param('id') id: string, @Body() updateAccountDto: UpdateAccountDto) {
     const { currentState, snapshot, eventsSinceSnapshot } = await this.accountService.getAccount(id);
-    console.log("withdraw", currentState, snapshot, eventsSinceSnapshot);
     const balance = currentState.balance - updateAccountDto.amount;
 
     const newEvent = {
@@ -63,7 +62,6 @@ export class AccountController {
   @Patch(':id/credit')
   async credit(@Param('id') id: string, @Body() updateAccountDto: UpdateAccountDto) {
     const { currentState, snapshot, eventsSinceSnapshot } = await this.accountService.getAccount(id);
-    console.log("debit", currentState, snapshot, eventsSinceSnapshot);
     const balance = currentState.balance + updateAccountDto.amount;
 
     const newEvent = {
