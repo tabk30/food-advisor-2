@@ -4,6 +4,7 @@ import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { Account, EventType } from './entities/account.entity';
 import { AggregateAccount } from './entities/aggregate-account.entity';
+import { unmarshall } from '@aws-sdk/util-dynamodb';
 
 @Controller('account')
 export class AccountController {
@@ -23,7 +24,26 @@ export class AccountController {
 
   @Post('/events/dynamodb')
   async dynamoStreamEvent(@Body() event: any) {
-    console.log("dynamoStreamEvent event", event)
+    let records: any[] = event.Records
+    for(let key in records) {
+      const record = records[key];
+      
+      if(record.dynamodb && record.dynamodb.NewImage){
+        const recordObject = unmarshall(record.dynamodb.NewImage);
+        await this.accountService.eventProcess({
+          id: recordObject["id"],
+          version: recordObject["version"],
+          type: recordObject["type"],
+          amount: recordObject["amount"],
+          payload: recordObject["payload"] ? {
+            id: recordObject["payload"]["id"],
+            balance: recordObject["payload"]["balance"],
+            name: recordObject["payload"]["name"],
+          } : undefined
+        });
+      }
+      
+    }
   }
 
   @Patch(':id/withdraw')

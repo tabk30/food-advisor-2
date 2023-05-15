@@ -36,6 +36,6 @@ async function bootstrap() {
 }
 
 export const handler = async (event: any, context: Context, callback: any) => {
-  const server = await bootstrap();
-  return server(event, context, callback);
+    const server = await bootstrap();
+    return server(event, context, callback);
 };

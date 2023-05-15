@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { DynamodbService } from '../services/dynamodb/dynamodb.service';
-import { BatchWriteItemCommand, BatchWriteItemCommandInput, QueryCommand, QueryCommandInput } from '@aws-sdk/client-dynamodb';
+import { BatchWriteItemCommand, BatchWriteItemCommandInput, GetItemCommand, GetItemCommandInput, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput } from '@aws-sdk/client-dynamodb';
 import { Account, EventType } from './entities/account.entity';
 import moment from 'moment';
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -132,6 +132,61 @@ export class AccountService {
       }
     }
     await this.db.db.send(new BatchWriteItemCommand(params));
+  }
+
+  public async eventProcess (event: {id: string, version: number, type: string, amount?: number, payload?: {id: string, balance: number, name: string}}) {
+    switch(event.type){
+        case EventType.CREATED: 
+            return await this.processCreateEvent(event.payload);
+        case EventType.CREDIT: 
+            return await this.processCreditEvent(event.id, event.amount);
+        case EventType.WITHDRAW: 
+            return await this.processWithdrawEvent(event.id, event.amount);
+    }
+}
+
+  private async processCreateEvent(account: Account) {
+    const param: PutItemCommandInput = {
+      TableName: QUERY_ACCOUNT_TABLE,
+      Item: marshall(account),
+      ReturnConsumedCapacity: "TOTAL"
+    }
+    await this.db.db.send( new PutItemCommand(param));
+  }
+
+  private async processCreditEvent(id: string, amount: number) {
+    let account = await this.getQueryAccout(id);
+    account.balance = account.balance + amount;
+    await this.updateQueryAccount(account);
+  }
+
+  private async processWithdrawEvent(id: string, amount: number) {
+    let account = await this.getQueryAccout(id);
+    account.balance = account.balance - amount;
+    await this.updateQueryAccount(account);
+  }
+
+  private async getQueryAccout(id: string): Promise<Account> {
+    const getItemParam: GetItemCommandInput = {
+      TableName: QUERY_ACCOUNT_TABLE,
+      Key: marshall({ id: id })
+    }
+    const item = await this.db.db.send(new GetItemCommand(getItemParam));
+    if (!item.Item) throw new HttpException({
+      status: HttpStatus.NOT_FOUND,
+      error: 'Account not found!'
+    }, HttpStatus.NOT_FOUND);
+    let data = unmarshall(item.Item);
+    return new Account(data.id, data.name, data.balance);
+  }
+
+  private async updateQueryAccount(account: Account): Promise<void> {
+    const param: PutItemCommandInput = {
+      TableName: QUERY_ACCOUNT_TABLE,
+      Item: marshall({...account}),
+      ReturnConsumedCapacity: "TOTAL"
+    }
+    await this.db.db.send( new PutItemCommand(param));
   }
 
   findAll() {
