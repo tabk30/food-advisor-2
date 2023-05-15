@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { DynamodbService } from '../services/dynamodb/dynamodb.service';
-import { BatchWriteItemCommand, BatchWriteItemCommandInput, GetItemCommand, GetItemCommandInput, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput } from '@aws-sdk/client-dynamodb';
+import { BatchWriteItemCommand, BatchWriteItemCommandInput, GetItemCommand, GetItemCommandInput, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput, ScanCommand, ScanCommandInput } from '@aws-sdk/client-dynamodb';
 import { Account, EventType } from './entities/account.entity';
 import moment from 'moment';
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -190,26 +190,49 @@ export class AccountService {
     await this.db.db.send( new PutItemCommand(param));
   }
 
-  findAll() {
-    return `This action returns all account`;
+  public async findAll(query: {id?: string, balance_lt?: number, balance_gt?: number, name?: string}): Promise<Account[]> {
+    let filterExpression: string;
+    let expressionAtribute: {};
+    let param: ScanCommandInput = {
+      TableName: QUERY_ACCOUNT_TABLE
+    };
+    console.log("findAll", query);
+    if (query.id || query.balance_lt || query.balance_gt || query.name) {
+      filterExpression = "";
+      expressionAtribute = {};
+      if (query.id) {
+        filterExpression = "id = :id ";
+        expressionAtribute[":id"] = query.id;
+      }
+      if (query.balance_gt) {
+        filterExpression = filterExpression + "balance >= :balance_gt ";
+        expressionAtribute[":balance_gt"] = query.balance_gt;
+      }
+
+      if (query.balance_lt) {
+        filterExpression = filterExpression + "balance <= :balance_lt ";
+        expressionAtribute[":balance_lt"] = query.balance_lt;
+      }
+
+      if (query.name) {
+        filterExpression = filterExpression + "contains (account_name, :account_name)";
+        expressionAtribute[":account_name"] = query.name;
+      }
+      param.FilterExpression = filterExpression;
+      param.ExpressionAttributeValues = marshall(expressionAtribute);
+    }
+    console.log("findAll", param);
+
+    let res = await this.db.db.send(new ScanCommand(param));
+    if (res.Count == 0) return [];
+    return res.Items.map(_item => {
+      let data = unmarshall(_item);
+      return new Account(data.id, data.name, data.balance);
+    });
   }
 
   async findOne(id: string): Promise<Account> {
-    let query: QueryCommandInput = {
-      KeyConditionExpression: 'id = :s',
-      ExpressionAttributeValues: {
-        ':s': {S: id}
-      },
-      TableName: COMMAND_ACCOUNT_TABLE
-    }
-    let res = await this.db.db.send(new QueryCommand(query));
-    let events = res.Items
-    
-    return;
-  }
-
-  update(id: number, updateAccountDto: UpdateAccountDto) {
-    return `This action updates a #${id} account`;
+    return await this.getQueryAccout(id);
   }
 
   remove(id: number) {
