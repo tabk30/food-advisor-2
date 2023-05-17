@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { DynamodbService } from '../services/dynamodb/dynamodb.service';
-import { BatchWriteItemCommand, BatchWriteItemCommandInput, GetItemCommand, GetItemCommandInput, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput, ScanCommand, ScanCommandInput } from '@aws-sdk/client-dynamodb';
+import { BatchWriteItemCommand, BatchWriteItemCommandInput, DynamoDBClient, GetItemCommand, GetItemCommandInput, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput, ScanCommand, ScanCommandInput } from '@aws-sdk/client-dynamodb';
 import { Account, EventType } from './entities/account.entity';
 import moment from 'moment';
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -12,7 +12,12 @@ const { COMMAND_ACCOUNT_TABLE, QUERY_ACCOUNT_TABLE } = process.env
 
 @Injectable()
 export class AccountService {
-  constructor(private readonly db: DynamodbService){}
+  private _db: DynamoDBClient;
+  constructor(){
+    this._db = process.env.dynamodb_end_point ? new DynamoDBClient({
+      endpoint: process.env.dynamodb_end_point
+  }) : new DynamoDBClient({ region: process.env.dynamodb_region });
+  }
   async create(account: AggregateAccount): Promise<string> {
     let params: BatchWriteItemCommandInput = {
       RequestItems: {
@@ -51,7 +56,7 @@ export class AccountService {
       }
     };
 
-    await this.db.db.send(new BatchWriteItemCommand(params));
+    await this._db.send(new BatchWriteItemCommand(params));
 
     return account.id;
   }
@@ -67,7 +72,7 @@ export class AccountService {
       ConsistentRead: true,
       ScanIndexForward: false
     }
-    const res = await this.db.db.send(new QueryCommand(query));
+    const res = await this._db.send(new QueryCommand(query));
     if(res.Count == 0) throw new HttpException({status: HttpStatus.NOT_FOUND, error: "Account not found"}, HttpStatus.NOT_FOUND);
     const events = res.Items.map(item => unmarshall(item));
     
@@ -108,7 +113,7 @@ export class AccountService {
             version: lastVersion + 1,
             type: event.type,
             amount: event.amount,
-            timestamp: `${moment().valueOf()}`
+            timestamp: moment().valueOf()
           }),
         }
       }
@@ -121,7 +126,7 @@ export class AccountService {
             version: lastVersion + 2,
             type: EventType.SNAPSHOT,
             payload: { id: id, balance: event.balance, name: snapshot.payload.name },
-            timestamp: `${moment().valueOf()}`
+            timestamp: moment().valueOf()
           })
         }
       });
@@ -132,7 +137,7 @@ export class AccountService {
         [COMMAND_ACCOUNT_TABLE]: items
       }
     }
-    await this.db.db.send(new BatchWriteItemCommand(params));
+    await this._db.send(new BatchWriteItemCommand(params));
   }
 
   public async eventProcess (event: {id: string, version: number, type: string, amount?: number, payload?: {id: string, balance: number, name: string}}) {
@@ -152,7 +157,7 @@ export class AccountService {
       Item: marshall(account),
       ReturnConsumedCapacity: "TOTAL"
     }
-    await this.db.db.send( new PutItemCommand(param));
+    await this._db.send( new PutItemCommand(param));
   }
 
   private async processCreditEvent(id: string, amount: number) {
@@ -172,7 +177,7 @@ export class AccountService {
       TableName: QUERY_ACCOUNT_TABLE,
       Key: marshall({ id: id })
     }
-    const item = await this.db.db.send(new GetItemCommand(getItemParam));
+    const item = await this._db.send(new GetItemCommand(getItemParam));
     if (!item.Item) throw new HttpException({
       status: HttpStatus.NOT_FOUND,
       error: 'Account not found!'
@@ -187,7 +192,7 @@ export class AccountService {
       Item: marshall({...account}),
       ReturnConsumedCapacity: "TOTAL"
     }
-    await this.db.db.send( new PutItemCommand(param));
+    await this._db.send( new PutItemCommand(param));
   }
 
   public async findAll(query: {id?: string, balance_lt?: number, balance_gt?: number, name?: string}): Promise<Account[]> {
@@ -223,7 +228,7 @@ export class AccountService {
     }
     console.log("findAll", param);
 
-    let res = await this.db.db.send(new ScanCommand(param));
+    let res = await this._db.send(new ScanCommand(param));
     if (res.Count == 0) return [];
     return res.Items.map(_item => {
       let data = unmarshall(_item);

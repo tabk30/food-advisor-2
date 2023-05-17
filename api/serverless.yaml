@@ -72,7 +72,7 @@ resources: # CloudFormation template syntax
 functions:
   account_api: # The name of the lambda function
    # The module 'handler' is exported in the file 'src/lambda'
-   handler: ./src/lambda.handler
+   handler: ./src/account/lambda.handler
    events:
      - http:
           method: ANY
