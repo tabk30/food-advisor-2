@@ -42,6 +42,6 @@ export class DynamoDBConstruct extends Construct {
     }
     public grantConnect(lambdaConnect: Function) {
         this._commandAccountTable.grantReadWriteData(lambdaConnect);
-        this._queryAccountTable.grantReadData(lambdaConnect);
+        this._queryAccountTable.grantReadWriteData(lambdaConnect);
     }
 }

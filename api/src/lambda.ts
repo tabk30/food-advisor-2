@@ -38,8 +38,6 @@ async function bootstrap() {
 
 export const handler = async (event: any, context: Context, callback: any) => {
     const server = await bootstrap();
-
-    console.log("handler event", event);
     if (event.type == "step-function") {
         event = {
             "path": "/account/events/stepfunction",
@@ -53,11 +51,9 @@ export const handler = async (event: any, context: Context, callback: any) => {
                 "resourcePath": "/{proxy+}",
                 "httpMethod": "POST",
             },
-            "body": JSON.stringify(event)
+            "body": JSON.stringify(event),
+            "isBase64Encoded": false
         }
     }
-    console.log("handler event", event);
-    console.log("handler context", context);
-    console.log("handler callback", callback);
     return server(event, context, callback);
 };

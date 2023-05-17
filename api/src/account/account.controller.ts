@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Req } from '@nestjs/common';
 import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
@@ -84,7 +84,9 @@ export class AccountController {
   }
 
   @Post('/events/stepfunction')
-  async stepFunctionEvent(@Body() event: any) {
-    console.log("stepFunctionEvent", event);
+  async stepFunctionEvent(@Body() data) {
+    console.log("stepFunctionEvent", data);
+    const text = data.toString().trim();
+    console.log('body:', text);
   }
 }

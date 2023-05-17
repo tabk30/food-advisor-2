@@ -90,12 +90,6 @@ functions:
             Fn::GetAtt:
               - command_account
               - Arn
-  # hello:
-  #  handler: ./src/first-lambda.handler
-  #  name: TheFirstLambda
-  secondLambda:
-   handler: ./src/second-lambda.secondhandler
-  #  name: TheSecondLambda
 stepFunctions:
   stateMachines:
     WaitMachine:
