@@ -6,6 +6,8 @@ import serverlessExpress from '@vendia/serverless-express';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import {v4} from 'uuid';
+import { ContextCreator } from '@nestjs/core/helpers/context-creator';
 
 const express = require('express');
 
@@ -36,5 +38,26 @@ async function bootstrap() {
 
 export const handler = async (event: any, context: Context, callback: any) => {
     const server = await bootstrap();
+
+    console.log("handler event", event);
+    if (event.type == "step-function") {
+        event = {
+            "path": "/account/events/stepfunction",
+            "httpMethod": "POST",
+            "headers": {
+                "Accept": "*/*",
+                "Content-Type": "application/json"
+            },
+            "requestContext": {
+                "resourceId": v4(),
+                "resourcePath": "/{proxy+}",
+                "httpMethod": "POST",
+            },
+            "body": JSON.stringify(event)
+        }
+    }
+    console.log("handler event", event);
+    console.log("handler context", context);
+    console.log("handler callback", callback);
     return server(event, context, callback);
 };

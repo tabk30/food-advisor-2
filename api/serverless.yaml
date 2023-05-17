@@ -5,6 +5,8 @@ plugins:
  - serverless-plugin-optimize
  - serverless-dynamodb-local
  - serverless-offline-dynamodb-streams
+ - serverless-step-functions
+ - '@fernthedev/serverless-offline-step-functions'
  - serverless-offline
 
 provider:
@@ -27,6 +29,10 @@ custom:
       onStart: true
   serverless-offline-dynamodb-streams: 
     endpoint: http://localhost:8000
+  '@fernthedev/serverless-offline-step-functions':
+    port: 8014
+    enabled: true
+    debug: true
 resources: # CloudFormation template syntax
   Resources:
     commandAccountTable:
@@ -84,16 +90,33 @@ functions:
             Fn::GetAtt:
               - command_account
               - Arn
-  # account_stream:
-  #  handler: ./src/dynamo-event-hander.handler
-  #  events:
-  #     - stream:
-  #         type: dynamodb
-  #         tableName: command_account
-  #         batchSize: 100
-  #         maximumRetryAttempts: 10
-  #         startingPosition: LATEST
-  #         arn: 
-  #           Fn::GetAtt:
-  #             - command_account
-  #             - Arn
+  # hello:
+  #  handler: ./src/first-lambda.handler
+  #  name: TheFirstLambda
+  secondLambda:
+   handler: ./src/second-lambda.secondhandler
+  #  name: TheSecondLambda
+stepFunctions:
+  stateMachines:
+    WaitMachine:
+      definition:
+        Comment: "An example of the Amazon States Language using wait states"
+        StartAt: FirstState
+        States:
+          FirstState:
+            Type: Task
+            Resource: !GetAtt account_api.Arn
+              # Fn::GetAtt: 
+              #   - hello
+              #   - Arn
+            Next: wait_using_seconds
+          wait_using_seconds:
+            Type: Wait
+            Seconds: 10
+            Next: FinalState
+          FinalState:
+            Type: Task
+            Resource: 
+              Fn::GetAtt: [account_api, Arn]
+            End: true
+

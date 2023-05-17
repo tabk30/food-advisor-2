@@ -82,4 +82,9 @@ export class AccountController {
   remove(@Param('id') id: string) {
     // return this.accountService.remove(+id);
   }
+
+  @Post('/events/stepfunction')
+  async stepFunctionEvent(@Body() event: any) {
+    console.log("stepFunctionEvent", event);
+  }
 }
