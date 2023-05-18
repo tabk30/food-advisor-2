@@ -34,8 +34,7 @@ async function bootstrap() {
 }
 
 export const handler = async (event: any, context: Context, callback: any) => {
-    const server = await bootstrap();
     console.log("Restaurant event", event);
-    console.log("Restaurant context", context);
+    const server = await bootstrap();
     return server(event, context, callback);
 };

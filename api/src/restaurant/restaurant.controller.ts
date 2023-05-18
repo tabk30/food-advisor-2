@@ -49,12 +49,12 @@ export class RestaurantController {
   @Post('event/sqs')
   public sqsEvent(@Body() message) {
     console.log("RestaurantController sqsEvent", message)
-    // let mesageList: any[] = message.Records;
-    // if (mesageList.length == 0) return;
-    // mesageList.map(_message => {
-    //   if (_message.body === "NEW_REVIEW") {
-    //     console.log("message", sqsToObject(_message.messageAttributes));
-    //   }
-    // });
+    let recors: any[] = message.Records
+    let messages = recors.map(record => JSON.parse(record.body));
+    messages.map(_message => {
+      if(_message.type && _message.type == 'create_review'){
+        this.restaurantService.addReview({account_id: _message.account_id, restaurant_id: _message.restaurant_id});
+      }
+    });
   }
 }

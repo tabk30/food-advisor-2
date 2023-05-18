@@ -14,15 +14,26 @@ plugins:
 provider:
  name: aws
  runtime: nodejs16.x
+ region: 'ap-southeast-1'
  environment:
+  region: 'ap-southeast-1'
   dynamodb_end_point: 'http://localhost:8000'
   COMMAND_ACCOUNT_TABLE: 'command_account'
   QUERY_ACCOUNT_TABLE: 'query_account'
   QUERY_REVIEW_TABLE: 'query_review'
   QUERY_RESTAURANT_TABLE: 'query_restaurant'
   REVIEW_QUENE: 'reviewQuene'
+  sns_end_point: 'http://127.0.0.1:4002'
   sqs_end_point: 'http://localhost:9324'
-  INGRESS_EVENT_TOPIC_NAME: sns-global
+  GLOBAL_TOPIC_SNS: global_topic_sns
+  GLOBAL_TOPIC_ARN: 'arn:aws:sns:ap-southeast-1:123456789012:global_topic_sns'
+  ACCOUNT_TOPIC_SNS: account_topic_sns
+  ACCOUNT_TOPIC_ARN: 'arn:aws:sns:ap-southeast-1:123456789012:account_topic_sns'
+  RESTAURANT_TOPIC_SNS: restaurant_topic_sns
+  RESTAURANT_TOPIC_ARN: 'arn:aws:sns:ap-southeast-1:123456789012:restaurant_topic_sns'
+  REVIEW_TOPIC_SNS: review_topic_sns
+  REVIEW_TOPIC_ARN: 'arn:aws:sns:ap-southeast-1:123456789012:review_topic_sns'
+  
 
 custom:
   dynamodb:
@@ -50,10 +61,30 @@ custom:
     debug: true
     subscriptions:
       - topic: 
-          topicName: ${self:provider.environment.INGRESS_EVENT_TOPIC_NAME}
+          topicName: ${self:provider.environment.GLOBAL_TOPIC_SNS}
           rawMessageDelivery: 'true'
           autoSubscribe: 'false'
-        queue: http://localhost:9324/queue/reviewQuene
+        queue: http://localhost:9324/queue/account_queue
+      - topic: 
+          topicName: ${self:provider.environment.GLOBAL_TOPIC_SNS}
+          rawMessageDelivery: 'true'
+          autoSubscribe: 'false'
+        queue: http://localhost:9324/queue/review_queue
+      - topic: 
+          topicName: ${self:provider.environment.ACCOUNT_TOPIC_SNS}
+          rawMessageDelivery: 'true'
+          autoSubscribe: 'false'
+        queue: http://localhost:9324/queue/account_queue
+      - topic: 
+          topicName: ${self:provider.environment.RESTAURANT_TOPIC_SNS}
+          rawMessageDelivery: 'true'
+          autoSubscribe: 'false'
+        queue: http://localhost:9324/queue/restaurant_queue
+      - topic: 
+          topicName: ${self:provider.environment.REVIEW_TOPIC_SNS}
+          rawMessageDelivery: 'true'
+          autoSubscribe: 'false'
+        queue: http://localhost:9324/queue/review_queue
 
 resources: # CloudFormation template syntax
   Resources:
@@ -120,41 +151,38 @@ resources: # CloudFormation template syntax
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-    SNSRestaurant:
+    GlobalSNS:
       Type: AWS::SNS::Topic
       Properties:
-        DisplayName: SNS Topic
-        TopicName: sns-global
-    Service2Queue: 
+        DisplayName: Global Topic SNS
+        TopicName: global_topic_sns
+    AccountSNS:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: Account Topic SNS
+        TopicName: account_topic_sns
+    RestaurantSNS:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: Restaurant Topic SNS
+        TopicName: restaurant_topic_sns
+    ReviewSNS:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: Review Topic SNS
+        TopicName: review_topic_sns
+    AccountQueue: 
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: reviewQuene
-    Service2Subscription:
-        Type: 'AWS::SNS::Subscription'
-        Properties:
-            TopicArn: !Ref SNSRestaurant
-            Endpoint:
-              Fn::GetAtt: [Service2Queue, Arn]
-            Protocol: SQS
-            RawMessageDelivery: true
-    # Service2QueuePolicy:
-    #     Type: AWS::SQS::QueuePolicy
-    #     Properties:
-    #         PolicyDocument:
-    #         Version: '2012-10-17'
-    #         Statement:
-    #             Effect: Allow
-    #             Principal: '*'
-    #             Action: 
-    #               - SQS:SendMessage
-    #             Resource:
-    #               - Fn::GetAtt: [Service2Queue, Arn]
-    #             Condition:
-    #               ArnEquals:
-    #               AWS:SourceArn: 
-    #                 Fn::GetAtt: [SNSRestaurant, Arn]
-    #         Queues:
-    #             - !Ref Service2Queue
+        QueueName: account_queue
+    ReviewQueue: 
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: review_queue
+    RestaurantQueue: 
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: restaurant_queue
 # create lambda function
 functions:
   account_api: 
@@ -173,12 +201,22 @@ functions:
             Fn::GetAtt:
               - command_account
               - Arn
+     - sqs:
+        queueName: account_queue
+        arn:
+          Fn::GetAtt:
+            - AccountQueue
   review_api: 
    handler: ./src/review/lambda.handler
    events:
      - http:
-          method: ANY
-          path: '/review/{proxy+}'
+        method: ANY
+        path: '/review/{proxy+}'
+     - sqs:
+        queueName: review_queue
+        arn:
+          Fn::GetAtt:
+            - ReviewQueue
   restaurant_api: 
    handler: ./src/restaurant/lambda.handler
    events:
@@ -186,10 +224,10 @@ functions:
           method: ANY
           path: '/restaurant/{proxy+}'
      - sqs:
-          queueName: reviewQuene
+          queueName: restaurant_queue
           arn:
             Fn::GetAtt:
-              - Service2Queue
+              - RestaurantQueue
               - Arn
 # create step function
 stepFunctions:

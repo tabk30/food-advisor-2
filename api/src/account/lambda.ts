@@ -37,6 +37,7 @@ async function bootstrap() {
 }
 
 export const handler = async (event: any, context: Context, callback: any) => {
+    console.log("Account event", event);
     const server = await bootstrap();
     if (event.type == "step-function") {
         event = {

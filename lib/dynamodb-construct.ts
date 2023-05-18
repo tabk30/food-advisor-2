@@ -17,6 +17,17 @@ export class DynamoDBConstruct extends Construct {
     public get commandAccountTable(): Table {
         return this._commandAccountTable;
     }
+
+    private _queryRestaurantTable: Table;
+    public get queryRestaurantTable(): Table {
+        return this._queryRestaurantTable;
+    }
+
+    private _queryReviewTable: Table;
+    public get queryReviewTable(): Table {
+        return this._queryReviewTable;
+    }
+
     constructor(
         private readonly scope: Construct,
         private readonly id: string
@@ -39,9 +50,28 @@ export class DynamoDBConstruct extends Construct {
             removalPolicy: RemovalPolicy.DESTROY,
             partitionKey: { name: 'id', type: AttributeType.STRING }
         });
+        this._queryRestaurantTable = new Table(this, 'queryRestaurant', {
+            billingMode: BillingMode.PAY_PER_REQUEST,
+            removalPolicy: RemovalPolicy.DESTROY,
+            partitionKey: { name: 'id', type: AttributeType.STRING }
+        });
+        this._queryReviewTable = new Table(this, 'queryReview', {
+            billingMode: BillingMode.PAY_PER_REQUEST,
+            removalPolicy: RemovalPolicy.DESTROY,
+            partitionKey: { name: 'id', type: AttributeType.STRING },
+            sortKey: { name: 'sort', type: AttributeType.NUMBER }
+        });
     }
-    public grantConnect(lambdaConnect: Function) {
+    public grantAccountConnect(lambdaConnect: Function) {
         this._commandAccountTable.grantReadWriteData(lambdaConnect);
         this._queryAccountTable.grantReadWriteData(lambdaConnect);
+    }
+
+    public grantRestaurantConnect(lambda: Function) {
+        this._queryRestaurantTable.grantReadWriteData(lambda);
+    }
+
+    public grantReviewConnect(lambda: Function) {
+        this._queryReviewTable.grantReadWriteData(lambda);
     }
 }
