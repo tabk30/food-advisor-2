@@ -13,6 +13,28 @@ services:
     working_dir: /home/dynamodblocal
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ."
 
+  sqs:
+    image: softwaremill/elasticmq-native:latest
+    ports:
+      - "9324:9324"
+      - "9325:9325"
+    command: "-Dnode-address.host=\"*\""
+    volumes:
+      - ./elasticmq.conf:/opt/config/elasticmq.conf
+  sqs-create:
+    image: amazon/aws-cli:latest
+    links:
+      - sqs
+    entrypoint: sh
+    command: create-queues.sh
+    volumes:
+      - ./scripts/create-queues.sh:/aws/create-queues.sh:ro
+    environment:
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=eu-west-1
+      - AWS_ENDPOINT_URL=http://sqs:9324
+
 networks:
   local-dynamodb:
     name: local-dynamodb

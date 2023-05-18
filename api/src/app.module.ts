@@ -2,20 +2,20 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
-import { DynamodbService } from './services/dynamodb/dynamodb.service';
-import { DynamodbModule } from './services/dynamodb/dynamodb.module';
 import { AccountModule } from './account/account.module';
+import { RestaurantModule } from './restaurant/restaurant.module';
+import { ReviewModule } from './review/review.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
-    DynamodbModule,
     AccountModule,
+    RestaurantModule,
+    ReviewModule,
   ],
   controllers: [AppController],
   providers: [
-    AppService,
-    DynamodbService
+    AppService
   ],
 })
 export class AppModule {}

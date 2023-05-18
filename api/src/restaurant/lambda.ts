@@ -5,10 +5,7 @@ import serverlessExpress from '@vendia/serverless-express';
 
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import { AppModule } from './app.module';
-import {v4} from 'uuid';
-import { ContextCreator } from '@nestjs/core/helpers/context-creator';
-
+import { RestaurantModule } from './restaurant.module';
 const express = require('express');
 
 // NOTE: If you get ERR_CONTENT_DECODING_FAILED in your browser, this is likely
@@ -22,14 +19,14 @@ async function bootstrap() {
     if (!cachedServer) {
         const expressApp = express();
         const nestApp = await NestFactory.create(
-            AppModule,
+            RestaurantModule,
             new ExpressAdapter(expressApp),
         );
         await nestApp.init();
         cachedServer = serverlessExpress({
             app: expressApp,
             eventSourceRoutes: {
-                AWS_DYNAMODB: '/account/events/dynamodb'
+                'AWS_SQS': '/restaurant/event/sqs'
             }
         });
     }
@@ -38,22 +35,7 @@ async function bootstrap() {
 
 export const handler = async (event: any, context: Context, callback: any) => {
     const server = await bootstrap();
-    if (event.type == "step-function") {
-        event = {
-            "path": "/account/events/stepfunction",
-            "httpMethod": "POST",
-            "headers": {
-                "Accept": "*/*",
-                "Content-Type": "application/json"
-            },
-            "requestContext": {
-                "resourceId": v4(),
-                "resourcePath": "/{proxy+}",
-                "httpMethod": "POST",
-            },
-            "body": JSON.stringify(event),
-            "isBase64Encoded": false
-        }
-    }
+    console.log("Restaurant event", event);
+    console.log("Restaurant context", context);
     return server(event, context, callback);
 };

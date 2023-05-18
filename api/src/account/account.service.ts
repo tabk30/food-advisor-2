@@ -1,6 +1,4 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { UpdateAccountDto } from './dto/update-account.dto';
-import { DynamodbService } from '../services/dynamodb/dynamodb.service';
 import { BatchWriteItemCommand, BatchWriteItemCommandInput, DynamoDBClient, GetItemCommand, GetItemCommandInput, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput, ScanCommand, ScanCommandInput } from '@aws-sdk/client-dynamodb';
 import { Account, EventType } from './entities/account.entity';
 import moment from 'moment';
@@ -13,10 +11,10 @@ const { COMMAND_ACCOUNT_TABLE, QUERY_ACCOUNT_TABLE } = process.env
 @Injectable()
 export class AccountService {
   private _db: DynamoDBClient;
-  constructor(){
+  constructor() {
     this._db = process.env.dynamodb_end_point ? new DynamoDBClient({
       endpoint: process.env.dynamodb_end_point
-  }) : new DynamoDBClient({ region: process.env.dynamodb_region });
+    }) : new DynamoDBClient({ region: process.env.dynamodb_region });
   }
   async create(account: AggregateAccount): Promise<string> {
     let params: BatchWriteItemCommandInput = {

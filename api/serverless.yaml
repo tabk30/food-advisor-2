@@ -7,6 +7,8 @@ plugins:
  - serverless-offline-dynamodb-streams
  - serverless-step-functions
  - '@fernthedev/serverless-offline-step-functions'
+ - serverless-offline-sqs
+ - serverless-offline-sns
  - serverless-offline
 
 provider:
@@ -16,6 +18,11 @@ provider:
   dynamodb_end_point: 'http://localhost:8000'
   COMMAND_ACCOUNT_TABLE: 'command_account'
   QUERY_ACCOUNT_TABLE: 'query_account'
+  QUERY_REVIEW_TABLE: 'query_review'
+  QUERY_RESTAURANT_TABLE: 'query_restaurant'
+  REVIEW_QUENE: 'reviewQuene'
+  sqs_end_point: 'http://localhost:9324'
+  INGRESS_EVENT_TOPIC_NAME: sns-global
 
 custom:
   dynamodb:
@@ -33,6 +40,21 @@ custom:
     port: 8014
     enabled: true
     debug: true
+  # setup sqs 
+  serverless-offline-sqs:
+    endpoint: http://localhost:9324
+    accessKeyId: local
+    secretAccessKey: local
+  serverless-offline-sns:
+    port: 4002 # a free port for the sns server to run on
+    debug: true
+    subscriptions:
+      - topic: 
+          topicName: ${self:provider.environment.INGRESS_EVENT_TOPIC_NAME}
+          rawMessageDelivery: 'true'
+          autoSubscribe: 'false'
+        queue: http://localhost:9324/queue/reviewQuene
+
 resources: # CloudFormation template syntax
   Resources:
     commandAccountTable:
@@ -68,18 +90,79 @@ resources: # CloudFormation template syntax
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-
+    queryReviewTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: query_review
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: sort
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: sort
+            KeyType:  RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    queryRestaurantTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: query_restaurant
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    SNSRestaurant:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: SNS Topic
+        TopicName: sns-global
+    Service2Queue: 
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: reviewQuene
+    Service2Subscription:
+        Type: 'AWS::SNS::Subscription'
+        Properties:
+            TopicArn: !Ref SNSRestaurant
+            Endpoint:
+              Fn::GetAtt: [Service2Queue, Arn]
+            Protocol: SQS
+            RawMessageDelivery: true
+    # Service2QueuePolicy:
+    #     Type: AWS::SQS::QueuePolicy
+    #     Properties:
+    #         PolicyDocument:
+    #         Version: '2012-10-17'
+    #         Statement:
+    #             Effect: Allow
+    #             Principal: '*'
+    #             Action: 
+    #               - SQS:SendMessage
+    #             Resource:
+    #               - Fn::GetAtt: [Service2Queue, Arn]
+    #             Condition:
+    #               ArnEquals:
+    #               AWS:SourceArn: 
+    #                 Fn::GetAtt: [SNSRestaurant, Arn]
+    #         Queues:
+    #             - !Ref Service2Queue
+# create lambda function
 functions:
-  account_api: # The name of the lambda function
-   # The module 'handler' is exported in the file 'src/lambda'
+  account_api: 
    handler: ./src/account/lambda.handler
    events:
      - http:
           method: ANY
-          path: /
-     - http:
-          method: ANY
-          path: '{proxy+}'
+          path: '/account/{proxy+}'
      - stream:
           type: dynamodb
           tableName: command_account
@@ -90,6 +173,25 @@ functions:
             Fn::GetAtt:
               - command_account
               - Arn
+  review_api: 
+   handler: ./src/review/lambda.handler
+   events:
+     - http:
+          method: ANY
+          path: '/review/{proxy+}'
+  restaurant_api: 
+   handler: ./src/restaurant/lambda.handler
+   events:
+     - http:
+          method: ANY
+          path: '/restaurant/{proxy+}'
+     - sqs:
+          queueName: reviewQuene
+          arn:
+            Fn::GetAtt:
+              - Service2Queue
+              - Arn
+# create step function
 stepFunctions:
   stateMachines:
     WaitMachine:
