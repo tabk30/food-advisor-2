@@ -5,6 +5,7 @@ node_modules
 dist
 .build
 .DS_Store
+.cognito
 
 # CDK asset staging directory
 .cdk.staging

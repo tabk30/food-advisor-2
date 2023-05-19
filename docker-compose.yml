@@ -32,8 +32,27 @@ services:
     environment:
       - AWS_ACCESS_KEY_ID=local
       - AWS_SECRET_ACCESS_KEY=local
-      - AWS_DEFAULT_REGION=eu-west-1
+      - AWS_DEFAULT_REGION=ap-southeast-1
       - AWS_ENDPOINT_URL=http://sqs:9324
+  cognito-local:
+    ports:
+      - '9229:9229'
+    volumes:
+      - './api/.cognito:/app/.cognito'
+    image: 'jagregory/cognito-local:latest'
+  cognito-user-pool-create:
+    image: amazon/aws-cli:latest
+    links:
+      - cognito-local
+    entrypoint: sh
+    command: create-cognito-user-pool.sh
+    volumes:
+      - ./scripts/create-cognito-user-pool.sh:/aws/create-cognito-user-pool.sh:ro
+    environment:
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=ap-southeast-1
+      - AWS_ENDPOINT_URL=http://cognito-local:9229
 
 networks:
   local-dynamodb:

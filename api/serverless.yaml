@@ -33,8 +33,15 @@ provider:
   RESTAURANT_TOPIC_ARN: 'arn:aws:sns:ap-southeast-1:123456789012:restaurant_topic_sns'
   REVIEW_TOPIC_SNS: review_topic_sns
   REVIEW_TOPIC_ARN: 'arn:aws:sns:ap-southeast-1:123456789012:review_topic_sns'
+  COGNITO_USER_POOL: 'MyUserPool'
+  COGNITO_USER_CLIENT_ID: 'ajtwg12tn2bjk5l1eczqmeuzz'
+  # { Ref: UserClient }
+    # Fn::GetAtt: 
+    #   - UserClient
+    #   - arn
+  COGNITO_USER_CLIENT: 'MyUserPoolClient'
+  COGNITO_ARN: 'http://127.0.0.1:9229'
   
-
 custom:
   dynamodb:
     stages:
@@ -50,7 +57,7 @@ custom:
   '@fernthedev/serverless-offline-step-functions':
     port: 8014
     enabled: true
-    debug: true
+    debug: false
   # setup sqs 
   serverless-offline-sqs:
     endpoint: http://localhost:9324
@@ -58,7 +65,7 @@ custom:
     secretAccessKey: local
   serverless-offline-sns:
     port: 4002 # a free port for the sns server to run on
-    debug: true
+    debug: false
     subscriptions:
       - topic: 
           topicName: ${self:provider.environment.GLOBAL_TOPIC_SNS}
@@ -183,14 +190,74 @@ resources: # CloudFormation template syntax
       Type: AWS::SQS::Queue
       Properties:
         QueueName: restaurant_queue
+    UserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:provider.environment.COGNITO_USER_POOL}
+        Schema:
+          - Name: email
+            Required: true
+            Mutable: true
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 6
+        AutoVerifiedAttributes: ["email"]
+    UserClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: ${self:provider.environment.COGNITO_USER_CLIENT}
+        GenerateSecret: false
+        UserPoolId: { Ref: UserPool }
+        AccessTokenValidity: 5
+        IdTokenValidity: 5
+        ExplicitAuthFlows:
+          - "ADMIN_NO_SRP_AUTH"
 # create lambda function
 functions:
+# Cognito authen function
+  # pre_signup:
+  #  handler: ./src/user/pre_signup.handler
+  #  events:
+  #     - cognitoUserPool:
+  #         pool: ${self:provider.environment.COGNITO_USER_POOL}
+  #         trigger: PreSignUp
+  #         existing: true
+  loginUser:
+    handler: ./src/user/login.handler
+    events:
+      - http:
+          path: user/login
+          method: post
+          cors: true
+  signupUser:
+    handler: ./src/user/signup.handler
+    events:
+      - http:
+          path: user/signup
+          method: post
+          cors: true
+  # authenUser:
+  #   handler: ./src/user/authen.handler
+# end
   account_api: 
    handler: ./src/account/lambda.handler
    events:
      - http:
           method: ANY
           path: '/account/{proxy+}'
+          # authorizer:
+          #   name: authenUser
+          #   identitySource: method.request.header.Authorization
+          #   resultTtlInSeconds: 3600
+          authorizer:
+            name: PrivateAuthorizer
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - UserPool
+                - Arn
+            claims:
+              - email
      - stream:
           type: dynamodb
           tableName: command_account
