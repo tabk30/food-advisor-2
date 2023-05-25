@@ -236,8 +236,8 @@ functions:
           path: user/signup
           method: post
           cors: true
-  # authenUser:
-  #   handler: ./src/user/authen.handler
+  authenUser:
+    handler: ./src/user/authen.handler
 # end
   account_api: 
    handler: ./src/account/lambda.handler
@@ -245,19 +245,19 @@ functions:
      - http:
           method: ANY
           path: '/account/{proxy+}'
-          # authorizer:
-          #   name: authenUser
-          #   identitySource: method.request.header.Authorization
-          #   resultTtlInSeconds: 3600
           authorizer:
-            name: PrivateAuthorizer
-            type: COGNITO_USER_POOLS
-            arn:
-              Fn::GetAtt:
-                - UserPool
-                - Arn
-            claims:
-              - email
+            name: authenUser
+            identitySource: method.request.header.Authorization
+            resultTtlInSeconds: 3600
+          # authorizer:
+          #   name: PrivateAuthorizer
+          #   type: COGNITO_USER_POOLS
+          #   arn:
+          #     Fn::GetAtt:
+          #       - UserPool
+          #       - Arn
+            # claims:
+            #   - email
      - stream:
           type: dynamodb
           tableName: command_account

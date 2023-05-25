@@ -4,6 +4,7 @@ import { ApiConstruct } from './api-construct';
 import { DynamoDBConstruct } from './dynamodb-construct';
 import { StepFunctionContruct } from './step-function-construct';
 import { SNSSQSConstruct } from './sns-sqs-construct';
+import { CognitoConstruct } from './congnito-construct';
 
 export class NestjsDynamoCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -18,6 +19,8 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
       REVIEW_TOPIC_SNS: 'review_topic_sns',
       REVIEW_QUEUE: 'review_queue'
     });
+    const cognitoConstruct = new CognitoConstruct(this, 'Cognito-Construct');
+
     const api = new ApiConstruct(
       this, 'LambdaHandler',
       {
@@ -26,9 +29,14 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
         queryRestaurantTable: table.queryRestaurantTable,
         queryReviewTable: table.queryReviewTable,
         restaurantTopic: sns.restaurantTopic,
-        reviewQuene: sns.reviewQueue
+        reviewQuene: sns.reviewQueue,
+        userPoolId: cognitoConstruct.usetPool.userPoolId,
+        userPoolArn: cognitoConstruct.usetPool.userPoolArn,
+        userPool: cognitoConstruct.usetPool,
+        userPoolClient: cognitoConstruct.usetPollClient
       }
     );
+
     table.grantAccountConnect(api.accountLambda);
     table.grantRestaurantConnect(api.restaurantLambda);
     table.grantReviewConnect(api.reviewLambda);
@@ -37,5 +45,7 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
     sns.subscriptionAccountQueue(api.accountLambda);
     sns.subscriptionRestaurantQueue(api.restaurantLambda);
     sns.subscriptionReviewQueue(api.reviewLambda);
-  }
+  };
+
+
 }

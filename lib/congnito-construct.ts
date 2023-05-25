@@ -1,59 +1,89 @@
-import { OAuthScope, UserPool, UserPoolClient, UserPoolClientIdentityProvider, UserPoolDomain } from "aws-cdk-lib/aws-cognito";
+import { RemovalPolicy } from "aws-cdk-lib";
+import { AccountRecovery, ClientAttributes, OAuthScope, StringAttribute, UserPool, UserPoolClient, UserPoolClientIdentityProvider, UserPoolDomain } from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
 
 
 export interface CognitoProps {
-    hostedAuthDomainPrefix: string;
 }
 
-export class Cognito extends Construct {
-    readonly userPoll: UserPool;
+export class CognitoConstruct extends Construct {
+    private readonly _userPool: UserPool;
+    public get usetPool ():UserPool {
+        return this._userPool;
+    }
+
+    private readonly _userPoolClient: UserPoolClient;
+    public get usetPollClient ():UserPoolClient {
+        return this._userPoolClient;
+    }
     constructor(
         scope: Construct,
-        id: string,
-        props: CognitoProps
+        id: string
     ) {
         super(scope, id);
-        this.userPoll = new UserPool(this, 'userpool', {
-            autoVerify: {
-                email: true
-            },
-            standardAttributes: {
-                email: {
-                    required: true
-                }
-            },
+        this._userPool = new UserPool(this, 'userpool-bank-user', {
+            userPoolName: 'my-user-pool-01',
+            selfSignUpEnabled: true,
             signInAliases: {
                 email: true,
-                username: true,
-                preferredUsername: true
             },
-            selfSignUpEnabled: true
-        });
-        const userPoolClient = new UserPoolClient(this, 'UserPollCLient', {
-            userPool: this.userPoll,
-            authFlows: {
-                userSrp: true,
-                // refreshToken: true
+            autoVerify: {
+                email: true,
             },
-            oAuth: {
-                flows: {
-                    // it is recommended to not use implicitCodeGrant flow in general
-                    // see more https://oauth.net/2/grant-types/implicit/#:~:text=It%20is%20not%20recommended%20to,been%20received%20by%20the%20client.
-                    implicitCodeGrant: true,
+            standardAttributes: {
+                givenName: {
+                    required: true,
+                    mutable: true,
                 },
-                scopes: [OAuthScope.PROFILE, OAuthScope.COGNITO_ADMIN],
-                callbackUrls: ['https://www.google.com']
+                familyName: {
+                    required: true,
+                    mutable: true,
+                },
             },
-            supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO],
-            preventUserExistenceErrors: true
-        });
-        const userPoolDomain = new UserPoolDomain(this, 'UserPoolDomain', {
-            userPool: this.userPoll,
-            cognitoDomain: {
-                // this will be used to create unique auth domain hosted on `auth.ap-southeast-2.amazoncognito.com`,
-                domainPrefix: props.hostedAuthDomainPrefix,
+            customAttributes: {
+                country: new StringAttribute({mutable: true}),
+                city: new StringAttribute({mutable: true}),
+                isAdmin: new StringAttribute({mutable: true}),
             },
+            passwordPolicy: {
+                minLength: 6,
+                requireLowercase: true,
+                requireDigits: true,
+                requireUppercase: false,
+                requireSymbols: false,
+            },
+            accountRecovery: AccountRecovery.EMAIL_ONLY,
+            removalPolicy: RemovalPolicy.RETAIN
         });
+        const standardCognitoAttributes = {
+            givenName: true,
+            familyName: true,
+            email: true
+          };
+        const clientReadAttributes = new ClientAttributes()
+            .withStandardAttributes(standardCognitoAttributes)
+            .withCustomAttributes(...['country', 'city', 'isAdmin']);
+
+        const clientWriteAttributes = new ClientAttributes()
+            .withStandardAttributes({
+                ...standardCognitoAttributes
+            })
+            .withCustomAttributes(...['country', 'city']);
+
+        this._userPoolClient = new UserPoolClient(this, 'userpool-client', {
+            userPool: this._userPool,
+            authFlows: {
+                adminUserPassword: true,
+                // userPassword: true,
+                custom: true,
+                userSrp: true,
+            },
+            supportedIdentityProviders: [
+                UserPoolClientIdentityProvider.COGNITO,
+            ],
+            readAttributes: clientReadAttributes,
+            writeAttributes: clientWriteAttributes,
+        });
+        
     }
 }

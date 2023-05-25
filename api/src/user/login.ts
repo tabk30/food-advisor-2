@@ -1,4 +1,4 @@
-import { AdminInitiateAuthCommandInput, CognitoIdentityProvider } from "@aws-sdk/client-cognito-identity-provider";
+import { AdminInitiateAuthCommandInput, CognitoIdentityProvider, InitiateAuthCommandInput } from "@aws-sdk/client-cognito-identity-provider";
 import { Context, Handler } from "aws-lambda";
 
 const { COGNITO_USER_POOL, COGNITO_ARN, region, COGNITO_USER_CLIENT_ID } = process.env;
@@ -47,8 +47,14 @@ export const handler: Handler = async (event: any, context: Context, callback: a
             }
         };
         const res = await client.adminInitiateAuth(params);
-        console.log("login", res);
-        return sendResponse(200, { message: 'Success', token: res.AuthenticationResult.IdToken });
+        console.log("login", res.AuthenticationResult);
+        
+        return sendResponse(200, { 
+            message: 'Success', 
+            // accesstoken: res.AuthenticationResult.AccessToken, 
+            id_token:  res.AuthenticationResult.IdToken, 
+            expise: res.AuthenticationResult.ExpiresIn
+        });
     } catch (error) {
         const message = error.message ? error.message : 'Internal server error'
         return sendResponse(500, { message })

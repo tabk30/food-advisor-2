@@ -1,4 +1,4 @@
-import { CognitoIdentityProvider, CognitoIdentityProviderClient, ListUsersCommand, ListUsersCommandInput } from "@aws-sdk/client-cognito-identity-provider";
+import { AdminCreateUserCommandInput, CognitoIdentityProvider } from "@aws-sdk/client-cognito-identity-provider";
 import { Context, Handler } from "aws-lambda";
 
 const { COGNITO_USER_POOL, COGNITO_ARN, region} = process.env;
@@ -12,19 +12,38 @@ export const handler: Handler = async (event: any, context: Context, callback: a
 
     const {
         email,
-        password
+        password,
+        given_name,
+        family_name,
+        country,
+        city,
+        is_admin
     } = JSON.parse(event.body);
 
-    let params = {
+    let params:AdminCreateUserCommandInput = {
         UserPoolId: COGNITO_USER_POOL,
         Username: email,
         UserAttributes: [{
             Name: 'email',
             Value: email
-        },
-        {
+        },{
             Name: 'email_verified',
             Value: 'true'
+        },{
+            Name: 'given_name',
+            Value: given_name
+        },{
+            Name: 'family_name',
+            Value: family_name
+        },{
+            Name: 'custom:city',
+            Value: city
+        },{
+            Name: 'custom:country',
+            Value: country
+        },{
+            Name: 'custom:isAdmin',
+            Value: is_admin ? is_admin : 'false'
         }],
         MessageAction: 'SUPPRESS'
     }

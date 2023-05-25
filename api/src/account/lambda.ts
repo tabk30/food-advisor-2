@@ -38,23 +38,25 @@ async function bootstrap() {
 
 export const handler = async (event: any, context: Context, callback: any) => {
     console.log("Account event", event);
+    if(event.requestContext) console.log("Account requestContext", event.requestContext.authorizer.claims);
+    console.log("Account context", context);
     const server = await bootstrap();
-    if (event.type == "step-function") {
-        event = {
-            "path": "/account/events/stepfunction",
-            "httpMethod": "POST",
-            "headers": {
-                "Accept": "*/*",
-                "Content-Type": "application/json"
-            },
-            "requestContext": {
-                "resourceId": v4(),
-                "resourcePath": "/{proxy+}",
-                "httpMethod": "POST",
-            },
-            "body": JSON.stringify(event),
-            "isBase64Encoded": false
-        }
-    }
+    // if (event.type == "step-function") {
+    //     event = {
+    //         "path": "/account/events/stepfunction",
+    //         "httpMethod": "POST",
+    //         "headers": {
+    //             "Accept": "*/*",
+    //             "Content-Type": "application/json"
+    //         },
+    //         "requestContext": {
+    //             "resourceId": v4(),
+    //             "resourcePath": "/{proxy+}",
+    //             "httpMethod": "POST",
+    //         },
+    //         "body": JSON.stringify(event),
+    //         "isBase64Encoded": false
+    //     }
+    // }
     return server(event, context, callback);
 };
