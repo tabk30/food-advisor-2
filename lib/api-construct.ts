@@ -2,11 +2,12 @@ import { CfnOutput, Duration } from "aws-cdk-lib";
 import { AuthorizationType, CfnAuthorizer, CfnMethod, CognitoUserPoolsAuthorizer, IdentitySource, LambdaIntegration, RequestAuthorizer, RestApi } from "aws-cdk-lib/aws-apigateway";
 import { IUserPool, UserPool, UserPoolClient } from "aws-cdk-lib/aws-cognito";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
-import { Effect, Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import { Effect, Grant, Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Code, LayerVersion, Runtime, Function, StartingPosition } from "aws-cdk-lib/aws-lambda";
 import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { Topic } from "aws-cdk-lib/aws-sns";
 import { Queue } from "aws-cdk-lib/aws-sqs";
+import { StateMachine } from "aws-cdk-lib/aws-stepfunctions";
 import { Construct } from "constructs";
 import { resolve } from "path";
 
@@ -21,7 +22,8 @@ export interface ApiConstructProps {
     userPoolId: string,
     userPoolArn: string,
     userPool: UserPool,
-    userPoolClient: UserPoolClient
+    userPoolClient: UserPoolClient,
+    stateMachine: StateMachine
 }
 
 export class ApiConstruct extends Construct {
@@ -60,7 +62,7 @@ export class ApiConstruct extends Construct {
     constructor(
         private readonly scope: Construct,
         private readonly id: string,
-        { commandAccountTable, queryAccountTable, queryRestaurantTable, queryReviewTable, reviewQuene, restaurantTopic, userPoolId, userPoolArn, userPool, userPoolClient }: ApiConstructProps
+        { commandAccountTable, queryAccountTable, queryRestaurantTable, queryReviewTable, reviewQuene, restaurantTopic, userPoolId, userPoolArn, userPool, userPoolClient, stateMachine }: ApiConstructProps
     ) {
         super(scope, id);
         this.appName = scope.node.tryGetContext('appName') || "Bank-CQRS";
@@ -75,7 +77,7 @@ export class ApiConstruct extends Construct {
         this.createAuthenLambdaHandler(userPoolId, userPoolArn, userPoolClient.userPoolClientId);
         this.createLoginLambdaHandler(userPoolId, userPoolArn, userPoolClient.userPoolClientId);
         this.createSignupLambdaHandler(userPoolId, userPoolArn);
-        this.createAccountLambdaHandler(commandAccountTable, queryAccountTable);
+        this.createAccountLambdaHandler(commandAccountTable, queryAccountTable, stateMachine);
         this.createRestaurantLambdaHandler(queryRestaurantTable);
         this.createReviewLambdaHandler(queryReviewTable, reviewQuene, restaurantTopic);
         this.createApiGateWay(userPool);
@@ -174,7 +176,7 @@ export class ApiConstruct extends Construct {
         );
     }
 
-    private createAccountLambdaHandler(commandAccountTable: Table, queryAccountTable: Table) {
+    private createAccountLambdaHandler(commandAccountTable: Table, queryAccountTable: Table, dynamoSync: StateMachine) {
         // add handler to respond to all our api requests
         this._accountLambdaHandler = new Function(this, `${this.appName}-Account-Handler`, {
             code: Code.fromAsset(resolve(__dirname, '../api/dist'), {
@@ -188,12 +190,14 @@ export class ApiConstruct extends Construct {
             environment: {
                 NODE_PATH: '$NODE_PATH:/opt',
                 COMMAND_ACCOUNT_TABLE: commandAccountTable.tableName,
-                QUERY_ACCOUNT_TABLE: queryAccountTable.tableName
+                QUERY_ACCOUNT_TABLE: queryAccountTable.tableName,
+                STEP_FUNCTION_ARN: dynamoSync.stateMachineArn
             },
         });
         this._accountLambdaHandler.addEventSource(new DynamoEventSource(commandAccountTable, {
             startingPosition: StartingPosition.LATEST,
         }));
+        dynamoSync.grantStartExecution(this._accountLambdaHandler);
     }
 
     private createRestaurantLambdaHandler(queryRestaurantTable: Table) {

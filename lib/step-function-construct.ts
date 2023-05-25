@@ -9,6 +9,10 @@ export interface DynamoDBInterface {
 
 export class StepFunctionContruct extends Construct {
     private readonly appName: string;
+    private _stateMachine: StateMachine;
+    public get stateMachine():StateMachine {
+        return this._stateMachine;
+    }
     constructor(
         private readonly scope: Construct,
         private readonly id: string,
@@ -20,7 +24,7 @@ export class StepFunctionContruct extends Construct {
     }
 
     private createStepFunction (lambdaFunction: Function) {
-        const stateMachine = new StateMachine(this, 'step-function-exam', {
+        this._stateMachine = new StateMachine(this, 'step-function-exam', {
             definition: new LambdaInvoke(this, 'first-step', {
                 lambdaFunction: lambdaFunction
             }).next(new Succeed(this, 'step-function-done'))

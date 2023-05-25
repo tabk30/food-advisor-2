@@ -6,6 +6,7 @@ plugins:
  - serverless-dynamodb-local
  - serverless-offline-dynamodb-streams
  - serverless-step-functions
+#  - serverless-step-functions-offline
  - '@fernthedev/serverless-offline-step-functions'
  - serverless-offline-sqs
  - serverless-offline-sns
@@ -35,12 +36,10 @@ provider:
   REVIEW_TOPIC_ARN: 'arn:aws:sns:ap-southeast-1:123456789012:review_topic_sns'
   COGNITO_USER_POOL: 'MyUserPool'
   COGNITO_USER_CLIENT_ID: 'ajtwg12tn2bjk5l1eczqmeuzz'
-  # { Ref: UserClient }
-    # Fn::GetAtt: 
-    #   - UserClient
-    #   - arn
   COGNITO_USER_CLIENT: 'MyUserPoolClient'
   COGNITO_ARN: 'http://127.0.0.1:9229'
+  STEP_FUNCTION_URL: 'http://localhost:8014'
+  STEP_FUNCTION_ARN: 'arn:aws:states:us-east-1:377116985439:stateMachine:SyncToDynamo'
   
 custom:
   dynamodb:
@@ -215,13 +214,6 @@ resources: # CloudFormation template syntax
 # create lambda function
 functions:
 # Cognito authen function
-  # pre_signup:
-  #  handler: ./src/user/pre_signup.handler
-  #  events:
-  #     - cognitoUserPool:
-  #         pool: ${self:provider.environment.COGNITO_USER_POOL}
-  #         trigger: PreSignUp
-  #         existing: true
   loginUser:
     handler: ./src/user/login.handler
     events:
@@ -249,15 +241,6 @@ functions:
             name: authenUser
             identitySource: method.request.header.Authorization
             resultTtlInSeconds: 3600
-          # authorizer:
-          #   name: PrivateAuthorizer
-          #   type: COGNITO_USER_POOLS
-          #   arn:
-          #     Fn::GetAtt:
-          #       - UserPool
-          #       - Arn
-            # claims:
-            #   - email
      - stream:
           type: dynamodb
           tableName: command_account
@@ -296,28 +279,30 @@ functions:
             Fn::GetAtt:
               - RestaurantQueue
               - Arn
+  acount_create_sync:
+    handler: ./src/account/dynamo-sync.handler
 # create step function
 stepFunctions:
   stateMachines:
-    WaitMachine:
+    SyncToDynamo:
       definition:
         Comment: "An example of the Amazon States Language using wait states"
-        StartAt: FirstState
+        StartAt: wait_using_seconds
         States:
-          FirstState:
-            Type: Task
-            Resource: !GetAtt account_api.Arn
-              # Fn::GetAtt: 
-              #   - hello
-              #   - Arn
-            Next: wait_using_seconds
+          # FirstState:
+          #   Type: Task
+          #   Resource: !GetAtt account_api.Arn
+          #     # Fn::GetAtt: 
+          #     #   - hello
+          #     #   - Arn
+          #   Next: wait_using_seconds
           wait_using_seconds:
             Type: Wait
             Seconds: 10
             Next: FinalState
           FinalState:
             Type: Task
-            Resource: 
-              Fn::GetAtt: [account_api, Arn]
+            Resource: !GetAtt acount_create_sync.Arn
+              # Fn::GetAtt: [acount_create_sync, Arn]
             End: true
 

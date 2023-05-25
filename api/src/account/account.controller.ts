@@ -31,24 +31,24 @@ export class AccountController {
   @Post('/events/dynamodb')
   async dynamoStreamEvent(@Body() event: any) {
     let records: any[] = event.Records
-    for(let key in records) {
+    for (let key in records) {
       const record = records[key];
-      
-      if(record.dynamodb && record.dynamodb.NewImage){
+
+      if (record.dynamodb && record.dynamodb.NewImage) {
         const recordObject = unmarshall(record.dynamodb.NewImage);
-        await this.accountService.eventProcess({
-          id: recordObject["id"],
-          version: recordObject["version"],
-          type: recordObject["type"],
-          amount: recordObject["amount"],
-          payload: recordObject["payload"] ? {
-            id: recordObject["payload"]["id"],
-            balance: recordObject["payload"]["balance"],
-            name: recordObject["payload"]["name"],
-          } : undefined
-        });
+        // await this.accountService.eventProcess({
+        //   id: recordObject["id"],
+        //   version: recordObject["version"],
+        //   type: recordObject["type"],
+        //   amount: recordObject["amount"],
+        //   payload: recordObject["payload"] ? {
+        //     id: recordObject["payload"]["id"],
+        //     balance: recordObject["payload"]["balance"],
+        //     name: recordObject["payload"]["name"],
+        //   } : undefined
+        // });
+        await this.accountService.syncToDynamoDB(recordObject);
       }
-      
     }
   }
 

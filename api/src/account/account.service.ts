@@ -5,16 +5,20 @@ import moment from 'moment';
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import * as _ from "lodash";
 import { AggregateAccount } from './entities/aggregate-account.entity';
+import { SFNClient, CreateActivityCommand, CreateActivityCommandInput, StartExecutionCommand, StartExecutionCommandInput } from "@aws-sdk/client-sfn";
 
-const { COMMAND_ACCOUNT_TABLE, QUERY_ACCOUNT_TABLE } = process.env
+const { COMMAND_ACCOUNT_TABLE, QUERY_ACCOUNT_TABLE, STEP_FUNCTION_URL, STEP_FUNCTION_ARN, region } = process.env
 
 @Injectable()
 export class AccountService {
   private _db: DynamoDBClient;
+  private _stepFunction: SFNClient;
   constructor() {
     this._db = process.env.dynamodb_end_point ? new DynamoDBClient({
       endpoint: process.env.dynamodb_end_point
     }) : new DynamoDBClient({ region: process.env.dynamodb_region });
+
+    this._stepFunction = STEP_FUNCTION_URL ? new SFNClient({ endpoint: STEP_FUNCTION_URL, region: region }) : new SFNClient({region});
   }
   async create(account: AggregateAccount): Promise<string> {
     let params: BatchWriteItemCommandInput = {
@@ -232,6 +236,20 @@ export class AccountService {
       let data = unmarshall(_item);
       return new Account(data.id, data.name, data.balance);
     });
+  }
+
+  public async syncToDynamoDB(input): Promise<void> {
+    const params: StartExecutionCommandInput = {
+      stateMachineArn: STEP_FUNCTION_ARN,
+      input: JSON.stringify(input)
+    };
+    console.log("dynamoStreamEvent send to stepfunction", params);
+    try {
+      let res = await this._stepFunction.send(new StartExecutionCommand(params));
+      console.log("dynamoStreamEvent step run result", res);
+    } catch (error) {
+      console.log("Send to step error", error);
+    }
   }
 
   async findOne(id: string): Promise<Account> {

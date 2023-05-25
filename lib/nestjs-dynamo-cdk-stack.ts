@@ -5,6 +5,7 @@ import { DynamoDBConstruct } from './dynamodb-construct';
 import { StepFunctionContruct } from './step-function-construct';
 import { SNSSQSConstruct } from './sns-sqs-construct';
 import { CognitoConstruct } from './congnito-construct';
+import { DynamoSyncConstruct } from './dynamo-sync-function-construct';
 
 export class NestjsDynamoCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -20,6 +21,8 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
       REVIEW_QUEUE: 'review_queue'
     });
     const cognitoConstruct = new CognitoConstruct(this, 'Cognito-Construct');
+    const dynmoSyncConstruct = new DynamoSyncConstruct(this, 'Dynmo-Sync-Function');
+    const stepFunction = new StepFunctionContruct(this, 'StepFunction', dynmoSyncConstruct.dynamoSyncLambda);
 
     const api = new ApiConstruct(
       this, 'LambdaHandler',
@@ -33,14 +36,16 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
         userPoolId: cognitoConstruct.usetPool.userPoolId,
         userPoolArn: cognitoConstruct.usetPool.userPoolArn,
         userPool: cognitoConstruct.usetPool,
-        userPoolClient: cognitoConstruct.usetPollClient
+        userPoolClient: cognitoConstruct.usetPollClient,
+        stateMachine: stepFunction.stateMachine
       }
     );
+    
 
     table.grantAccountConnect(api.accountLambda);
     table.grantRestaurantConnect(api.restaurantLambda);
     table.grantReviewConnect(api.reviewLambda);
-    const stepFunction = new StepFunctionContruct(this, 'StepFunction', api.accountLambda);
+    
     
     sns.subscriptionAccountQueue(api.accountLambda);
     sns.subscriptionRestaurantQueue(api.restaurantLambda);
