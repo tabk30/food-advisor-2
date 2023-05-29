@@ -23,7 +23,8 @@ export interface ApiConstructProps {
     userPoolArn: string,
     userPool: UserPool,
     userPoolClient: UserPoolClient,
-    stateMachine: StateMachine
+    stateMachine: StateMachine,
+    layer: LayerVersion
 }
 
 export class ApiConstruct extends Construct {
@@ -62,17 +63,13 @@ export class ApiConstruct extends Construct {
     constructor(
         private readonly scope: Construct,
         private readonly id: string,
-        { commandAccountTable, queryAccountTable, queryRestaurantTable, queryReviewTable, reviewQuene, restaurantTopic, userPoolId, userPoolArn, userPool, userPoolClient, stateMachine }: ApiConstructProps
+        { commandAccountTable, queryAccountTable, queryRestaurantTable, queryReviewTable, reviewQuene, restaurantTopic, userPoolId, userPoolArn, userPool, userPoolClient, stateMachine, layer }: ApiConstructProps
     ) {
         super(scope, id);
         this.appName = scope.node.tryGetContext('appName') || "Bank-CQRS";
 
         // pack all external deps in layer
-        this._sourceLayer = new LayerVersion(this, `${this.appName}-HandlerLayer`, {
-            code: Code.fromAsset(resolve(__dirname, '../lambda-layer-1/nodejs/node_modules')),
-            compatibleRuntimes: [Runtime.NODEJS_16_X, Runtime.NODEJS_18_X],
-            description: 'Api Handler Dependencies',
-        });
+        this._sourceLayer = layer
 
         this.createAuthenLambdaHandler(userPoolId, userPoolArn, userPoolClient.userPoolClientId);
         this.createLoginLambdaHandler(userPoolId, userPoolArn, userPoolClient.userPoolClientId);
@@ -80,7 +77,7 @@ export class ApiConstruct extends Construct {
         this.createAccountLambdaHandler(commandAccountTable, queryAccountTable, stateMachine);
         this.createRestaurantLambdaHandler(queryRestaurantTable);
         this.createReviewLambdaHandler(queryReviewTable, reviewQuene, restaurantTopic);
-        this.createApiGateWay(userPool);
+        // this.createApiGateWay(userPool);
     }
 
     private createAuthenLambdaHandler(userPoolId: string, userPoolArn: string, userPoolClientId: string,){
@@ -244,45 +241,45 @@ export class ApiConstruct extends Construct {
         this._reviewLambdaHandler.addToRolePolicy(snsPolicy);
     }
 
-    private createApiGateWay(userPool: UserPool) {
-        // add api resource to handle all http traffic and pass it to our handler
-        this._api = new RestApi(this, `${this.appName}-api-gateway`, {
-            deploy: true
-        });
-        new CfnOutput(this, 'apiUrl', { value: this._api.url });
+    // private createApiGateWay(userPool: UserPool) {
+    //     // add api resource to handle all http traffic and pass it to our handler
+    //     this._api = new RestApi(this, `${this.appName}-api-gateway`, {
+    //         deploy: true
+    //     });
+    //     new CfnOutput(this, 'apiUrl', { value: this._api.url });
 
-        // Lambda Authorizer with 'REQUEST' type
-        // const authorizer = new RequestAuthorizer(this, 'cognito-api-request-authorizer', {
-        //     handler: this._authenLambdaHandler,
-        //     identitySources: [IdentitySource.header('authorization')],
-        //     resultsCacheTtl: Duration.seconds(0),
-        // });
-        const auth = new CognitoUserPoolsAuthorizer(this, 'cognito-api-request-authorizer', {
-            cognitoUserPools: [userPool]
-        });
+    //     // Lambda Authorizer with 'REQUEST' type
+    //     // const authorizer = new RequestAuthorizer(this, 'cognito-api-request-authorizer', {
+    //     //     handler: this._authenLambdaHandler,
+    //     //     identitySources: [IdentitySource.header('authorization')],
+    //     //     resultsCacheTtl: Duration.seconds(0),
+    //     // });
+    //     const auth = new CognitoUserPoolsAuthorizer(this, 'cognito-api-request-authorizer', {
+    //         cognitoUserPools: [userPool]
+    //     });
 
-        const loginResource = this.api.root.addResource('login');
-        loginResource.addMethod('POST', new LambdaIntegration(this._loginLambdaHandler));
-        const signupResource = this.api.root.addResource('signup');
-        signupResource.addMethod('POST', new LambdaIntegration(this._signupLambdaHandler));
+    //     const loginResource = this.api.root.addResource('login');
+    //     loginResource.addMethod('POST', new LambdaIntegration(this._loginLambdaHandler));
+    //     const signupResource = this.api.root.addResource('signup');
+    //     signupResource.addMethod('POST', new LambdaIntegration(this._signupLambdaHandler));
 
-        const accountResource = this.api.root.addResource('account', {defaultMethodOptions: {
-            authorizationType: AuthorizationType.COGNITO
-        }});
-        accountResource.addMethod('ANY', new LambdaIntegration(this._accountLambdaHandler), {
-            methodResponses: [{
-              statusCode: '200',
-              responseParameters: {
-                'method.response.header.Content-Type': true,
-                'method.response.header.Access-Control-Allow-Origin': true,
-              },
-            }],
-            authorizer: auth,
-            authorizationType: AuthorizationType.COGNITO,
-          },);
-        const restaurantResource = this.api.root.addResource('restaurant');
-        restaurantResource.addMethod('ANY', new LambdaIntegration(this._restaurantLambdaHandler));
-        const reviewResource = this.api.root.addResource('review');
-        reviewResource.addMethod('ANY', new LambdaIntegration(this._reviewLambdaHandler));
-    }
+    //     const accountResource = this.api.root.addResource('account', {defaultMethodOptions: {
+    //         authorizationType: AuthorizationType.COGNITO
+    //     }});
+    //     accountResource.addMethod('ANY', new LambdaIntegration(this._accountLambdaHandler), {
+    //         methodResponses: [{
+    //           statusCode: '200',
+    //           responseParameters: {
+    //             'method.response.header.Content-Type': true,
+    //             'method.response.header.Access-Control-Allow-Origin': true,
+    //           },
+    //         }],
+    //         authorizer: auth,
+    //         authorizationType: AuthorizationType.COGNITO,
+    //       },);
+    //     const restaurantResource = this.api.root.addResource('restaurant');
+    //     restaurantResource.addMethod('ANY', new LambdaIntegration(this._restaurantLambdaHandler));
+    //     const reviewResource = this.api.root.addResource('review');
+    //     reviewResource.addMethod('ANY', new LambdaIntegration(this._reviewLambdaHandler));
+    // }
 }

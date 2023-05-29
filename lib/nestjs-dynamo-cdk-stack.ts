@@ -6,6 +6,9 @@ import { StepFunctionContruct } from './step-function-construct';
 import { SNSSQSConstruct } from './sns-sqs-construct';
 import { CognitoConstruct } from './congnito-construct';
 import { DynamoSyncConstruct } from './dynamo-sync-function-construct';
+import { ApiGatewayConstruct } from './api-gateway-construct';
+import { ErrorHandlerConstruct } from './error-handler-construct';
+import { LambdaLayerConstruct } from './lambda-layer';
 
 export class NestjsDynamoCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -24,6 +27,7 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
     const dynmoSyncConstruct = new DynamoSyncConstruct(this, 'Dynmo-Sync-Function');
     const stepFunction = new StepFunctionContruct(this, 'StepFunction', dynmoSyncConstruct.dynamoSyncLambda);
 
+    const sourceLayer = new LambdaLayerConstruct(this, 'Lambda-Layer-Construct');
     const api = new ApiConstruct(
       this, 'LambdaHandler',
       {
@@ -37,9 +41,22 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
         userPoolArn: cognitoConstruct.usetPool.userPoolArn,
         userPool: cognitoConstruct.usetPool,
         userPoolClient: cognitoConstruct.usetPollClient,
-        stateMachine: stepFunction.stateMachine
+        stateMachine: stepFunction.stateMachine,
+        layer: sourceLayer.layder1
       }
     );
+
+    const apiGW = new ApiGatewayConstruct(this, 'api-gateway-construct');
+    apiGW.addResource(api.loginLambda, 'login', 'POST');
+    apiGW.addResource(api.signupLambda, 'signup', 'POST');
+    apiGW.addResource(api.accountLambda, 'account', 'ANY', cognitoConstruct.usetPool);
+    apiGW.addResource(api.restaurantLambda, 'restaurant', 'ANY');
+    apiGW.addResource(api.reviewLambda, 'review', 'ANY');
+
+    //demo log trigger
+    const logTrigger = new ErrorHandlerConstruct(this, 'error-handler-costruct', {sourceLayer: sourceLayer.layder1});
+    const lambda = logTrigger.demoErrorFire(sourceLayer.layder1);
+    apiGW.addResource(lambda, 'logFire', 'ANY');
     
 
     table.grantAccountConnect(api.accountLambda);
