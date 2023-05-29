@@ -13,3 +13,15 @@ export const handler: Handler = async (event: any, context: Context, callback: a
 
     throw new Error('An unexpected error occurred');
 };
+
+export const dlqThrow: Handler = async (event: any, context: Context, callback: any) => {
+    console.log("dlqThrow event", event);
+    console.log("dlqThrow context", context);
+    throw new Error('throwing an Error 💥');
+}
+
+export const dsThrow: Handler = async (event: any, context: Context, callback: any) => {
+    console.log("dsThrow event", event);
+    console.log("dsThrow context", context);
+    throw new Error('throwing an Error dsThrow 💥');
+}

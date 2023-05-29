@@ -6,6 +6,7 @@ dist
 .build
 .DS_Store
 .cognito
+cdk-outputs.json
 
 # CDK asset staging directory
 .cdk.staging

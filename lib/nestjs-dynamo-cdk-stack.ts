@@ -9,6 +9,8 @@ import { DynamoSyncConstruct } from './dynamo-sync-function-construct';
 import { ApiGatewayConstruct } from './api-gateway-construct';
 import { ErrorHandlerConstruct } from './error-handler-construct';
 import { LambdaLayerConstruct } from './lambda-layer';
+import { DeadLetterQueueConstruct } from './dead-letter-queue-construct';
+import { DynamoStreamErrorHandlerConstruct } from './dynamo-stream-handler-construct';
 
 export class NestjsDynamoCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -57,6 +59,8 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
     const logTrigger = new ErrorHandlerConstruct(this, 'error-handler-costruct', {sourceLayer: sourceLayer.layder1});
     const lambda = logTrigger.demoErrorFire(sourceLayer.layder1);
     apiGW.addResource(lambda, 'logFire', 'ANY');
+    const dlqConstruct = new DeadLetterQueueConstruct(this, 'dead-leter-queue-construct', {sourceLayer: sourceLayer.layder1});
+    const dbStreamErrorHandler = new DynamoStreamErrorHandlerConstruct(this, 'dynamo-stream-error-handler', {sourceLayer: sourceLayer.layder1, commandAccountTable: table.commandAccountTable});
     
 
     table.grantAccountConnect(api.accountLambda);
