@@ -28,6 +28,21 @@ export class DynamoDBConstruct extends Construct {
         return this._queryReviewTable;
     }
 
+    private _helloTable: Table;
+    public get helloTable(): Table {
+        return this._helloTable;
+    }
+
+    private _worldTable: Table;
+    public get worldTable(): Table {
+        return this._worldTable;
+    }
+
+    private _foodTable: Table;
+    public get foodTable(): Table {
+        return this._foodTable;
+    }
+
     constructor(
         private readonly scope: Construct,
         private readonly id: string
@@ -60,6 +75,21 @@ export class DynamoDBConstruct extends Construct {
             removalPolicy: RemovalPolicy.DESTROY,
             partitionKey: { name: 'id', type: AttributeType.STRING },
             sortKey: { name: 'sort', type: AttributeType.NUMBER }
+        });
+        this._helloTable = new Table(this, 'helloTable', {
+            billingMode: BillingMode.PAY_PER_REQUEST,
+            removalPolicy: RemovalPolicy.DESTROY,
+            partitionKey: { name: 'id', type: AttributeType.STRING },
+        });
+        this._worldTable = new Table(this, 'worldTable', {
+            billingMode: BillingMode.PAY_PER_REQUEST,
+            removalPolicy: RemovalPolicy.DESTROY,
+            partitionKey: { name: 'id', type: AttributeType.STRING },
+        });
+        this._foodTable = new Table(this, 'foodTable', {
+            billingMode: BillingMode.PAY_PER_REQUEST,
+            removalPolicy: RemovalPolicy.DESTROY,
+            partitionKey: { name: 'id', type: AttributeType.STRING },
         });
     }
     public grantAccountConnect(lambdaConnect: Function) {

@@ -27,9 +27,14 @@ export class NestjsDynamoCdkStack extends cdk.Stack {
     });
     const cognitoConstruct = new CognitoConstruct(this, 'Cognito-Construct');
     const dynmoSyncConstruct = new DynamoSyncConstruct(this, 'Dynmo-Sync-Function');
-    const stepFunction = new StepFunctionContruct(this, 'StepFunction', dynmoSyncConstruct.dynamoSyncLambda);
 
     const sourceLayer = new LambdaLayerConstruct(this, 'Lambda-Layer-Construct');
+    const stepFunction = new StepFunctionContruct(this, 'Step-Function-Construct', {
+      sourceLayer: sourceLayer.layder1,
+      helloTable: table.helloTable,
+      worldTable: table.worldTable,
+      foodTable: table.foodTable
+    });
     const api = new ApiConstruct(
       this, 'LambdaHandler',
       {

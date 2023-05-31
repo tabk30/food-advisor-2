@@ -16,11 +16,6 @@ export class DynamoSyncConstruct extends Construct {
         this.createDynmoSync();
     }
     private createDynmoSync():Function {
-        const sourceLayer = new LayerVersion(this, `dynomo_s-HandlerLayer`, {
-            code: Code.fromAsset(resolve(__dirname, '../lambda-layer-1/nodejs/node_modules')),
-            compatibleRuntimes: [Runtime.NODEJS_16_X, Runtime.NODEJS_18_X],
-            description: 'Api Handler Dependencies',
-        });
         this._dynamoLambdaHandler = new Function(this, 'Dynamo-Sync-Handler', {
             code: Code.fromAsset(resolve(__dirname, '../api/dist'), {
                 exclude: ['node_modules'],
